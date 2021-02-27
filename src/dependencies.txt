@@ -1,0 +1,15 @@
+#Modules available via pip
+setuptools
+scikit-bio
+dask
+setuptools
+pandas
+numpy
+humanize
+plotly
+psutil
+joblib
+#Not available via pip. Please install manually.
+#prodigal
+#trimmomatic
+
