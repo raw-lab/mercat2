@@ -16,8 +16,8 @@ Usage:
  * -k K        kmer length
  * -n N        no of cores [default = all]
  * -c C        minimum kmer count [default = 10]
- * -pro        run mercat on protein input file specified as .faa 
- * -q          tell mercat2 that input file provided are raw nucleotide reads as [.fq, .fastq]
+ * -pro        protein input file (.faa) 
+ * -q          raw nucleotide reads as [.fq, .fastq]
  * -p          run prodigal on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta']
  * -h, --help  show this help message
 
@@ -47,7 +47,7 @@ Other usage examples:
    Same as above but can provide the quality option to trimmomatic
    
 *  `mercat2 -i test.fq -k 3 -n 8 -c 10 -q -t 20 -p`
-   Run trimmomatic on raw nucleotide reads, then run prodigal on the trimmed read to produce a protein file which is then processed by mercat
+   Run fastp on raw nucleotide reads, then run prodigal on the trimmed read to produce a protein file which is then processed by mercat
       
 *  `mercat2 -i test.fna -k 3 -n 8 -c 10`  
    Run mercat on nucleotide input - one of ['.fa', '.fna', '.ffn', '.fasta']
