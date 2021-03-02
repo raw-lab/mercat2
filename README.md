@@ -19,7 +19,6 @@ Usage:
  * -pro        run mercat on protein input file specified as .faa 
  * -q          tell mercat2 that input file provided are raw nucleotide reads as [.fq, .fastq]
  * -p          run prodigal on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta']
- * -t [T]      Trimmomatic options
  * -h, --help  show this help message
 
 
