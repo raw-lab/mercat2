@@ -44,7 +44,7 @@ Other usage examples:
    Runs trimmomatic on raw nucleotide reads (.fq or .fastq), then runs mercat on the trimmed nucleotides
     
 *  `mercat2 -i test.fq -k 3 -n 8 -c 10 -q -t 20`  
-   Same as above but can provide the quality option to trimmomatic
+   Same as above but can provide the quality option to fastp
    
 *  `mercat2 -i test.fq -k 3 -n 8 -c 10 -q -t 20 -p`
    Run fastp on raw nucleotide reads, then run prodigal on the trimmed read to produce a protein file which is then processed by mercat
