@@ -18,7 +18,7 @@ Usage:
  * -c C        minimum kmer count [default = 10]
  * -pro        protein input file (.faa) 
  * -q          raw nucleotide reads as [.fq, .fastq]
- * -p          run prodigal on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta']
+ * -p          protein mode on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta']
  * -h, --help  show this help message
 
 
