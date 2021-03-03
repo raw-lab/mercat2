@@ -1,7 +1,7 @@
 MerCat2: python code for versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis
 ================================================
 
-![GitHub Logo](mercat_workflow.jpg)
+![GitHub Logo](src/mercat_workflow.jpg)
 
   
 Installing MerCat2: 
