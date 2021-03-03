@@ -71,5 +71,5 @@ If you are publishing results obtained using MerCat2, please cite:
 CONTACT
 -------
 
-Please send all queries to <a href="mailto:mramapur@uncc.edu?"><img src="src/mercat_workflow.jpg"/></a> Mounika Ramapuram <[mramapur@uncc.edu](mramapur@uncc.edu)> and Richard Allen White III <[rwhit101@uncc.edu](rwhit101@uncc.edu)> 
+Please send all queries to <a href="mailto:mramapur@uncc.edu?"><img src="src/281769.svg"/></a> Mounika Ramapuram <[mramapur@uncc.edu](mramapur@uncc.edu)> and Richard Allen White III <[rwhit101@uncc.edu](rwhit101@uncc.edu)> 
 
