@@ -5,7 +5,7 @@ MerCat2: python code for versatile k-mer counter and diversity estimator for dat
 
   
 Installing MerCat2: 
- - Available via Anaconda: Enable BioConda repo and run `conda install mercat2`  
+ - Available via Anaconda: Enable BioConda repo and run `conda install mercat2`  <br/>
  - We do not have a pip installer available as of now. If you would like to use pip, please install the 
    modules listed in `dependencies.txt` via pip and run `python setup.py install` for setting up mercat.
  
