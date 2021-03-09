@@ -1,6 +1,6 @@
 
-{% set name = "mercat" %}
-{% set version = "0.3" %}
+{% set name = "mercat2" %}
+{% set version = "2.0" %}
 
 package:
   name: {{ name|lower }}
@@ -8,7 +8,7 @@ package:
 
 source:
   fn: {{ name|lower }}_{{ version }}.tar.gz
-  url: https://github.com/raw-lab/mercat/
+  url: https://github.com/raw-lab/mercat2/
   md5: a2e9a113a77dc95324d6f3158a716dc5
 
 
@@ -27,7 +27,6 @@ requirements:
     - python
     - scikit-bio == 0.2.3
     - prodigal
-    - trimmomatic
     - dask
     - pandas
     - numpy
@@ -39,16 +38,17 @@ requirements:
 
 test:
   commands:
-    - mercat --help
+    - mercat2 --help
 
 about:
   home:
   license: BSD
-  summary: 'Mercat: a versatile counter and diversity estimator for data base independent property analysis obtained from whole community sequencing data.'
+  summary: 'Mercat2: a versatile counter and diversity estimator for data base independent property analysis obtained from whole community sequencing data.'
   license_family: BSD
 
 extra:
-  recipe-maintainers:
-    - ajaypanyala
+  recipe-maintainers: 
     - raw937
+    - rnmouika
+    - raw-lab
 
