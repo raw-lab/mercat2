@@ -17,8 +17,7 @@ Usage:
  * -n N        no of cores [default = all]
  * -c C        minimum kmer count [default = 10]
  * -pro        protein input file (.faa) 
- * -q          raw nucleotide reads as [.fq, .fastq]
- * -p          protein mode on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta']
+ * -p          protein mode on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta', '.fastq']
  * -h, --help  show this help message
 
 
@@ -35,22 +34,9 @@ By default mercat assumes that inputs provided is one of ['.fa', '.fna', '.ffn',
 * `test_protein_diversity_metrics.txt` containing the alpha diversity metrics.
   
 Other usage examples:
----------------------
-
-* `mercat2 -i test.fq -k 3 -n 8 -c 10 -q`  
-   Runs mercat2 on raw nucleotide read (.fq or .fastq) 
-   
-*  `mercat2 -i test.fq -k 3 -n 8 -c 10 -q -t`  
-   Runs trimmomatic on raw nucleotide reads (.fq or .fastq), then runs mercat on the trimmed nucleotides
-    
-*  `mercat2 -i test.fq -k 3 -n 8 -c 10 -q -t 20`  
-   Same as above but can provide the quality option to fastp
-   
-*  `mercat2 -i test.fq -k 3 -n 8 -c 10 -q -t 20 -p`
-   Run fastp on raw nucleotide reads, then run prodigal on the trimmed read to produce a protein file which is then processed by mercat
-      
+---------------------    
 *  `mercat2 -i test.fna -k 3 -n 8 -c 10`  
-   Run mercat on nucleotide input - one of ['.fa', '.fna', '.ffn', '.fasta']
+   Run mercat on nucleotide input - one of ['.fa', '.fna', '.ffn', '.fasta','.fastq']
     
 *   `mercat2 -i test.fna -k 3 -n 8 -c 10 -p`  
     Run prodigal on nucleotide input, generate a .faa protein file and run mercat on it
