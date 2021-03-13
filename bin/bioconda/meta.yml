@@ -24,7 +24,7 @@ requirements:
 
   run:
     - python
-    - scikit-bio == 0.2.3
+    - scikit-bio
     - prodigal
     - dask
     - pandas
@@ -33,7 +33,9 @@ requirements:
     - plotly
     - psutil
     - joblib
-
+    - scikit-learn
+    - fastqc
+    - fastp
 
 test:
   commands:
