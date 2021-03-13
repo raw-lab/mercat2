@@ -22,9 +22,18 @@ Usage <br/>
  - -p run prodigal on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta','fastq']<br/>
  - -h, --help show this help message<br/>
 
-By default mercat assumes that inputs provided is one of ['.fa', '.fna', '.ffn', '.fasta']
+By default mercat assumes that inputs provided is one of ['.fa', '.fna', '.ffn', '.fasta'] <br/>
 
- Example: To compute all 3-mers, run mercat -i test_protien.fna -k 3 -n 8 -c 10 -p
+ Example: To compute all 3-mers, run mercat -i test.fna -k 3 -n 8 -c 10 -p
+ 
+The above command:
+
+Runs prodigal on test.fa, then runs mercat on the resulting protein file.<br/>
+Results are generally stored in input-file-name_{protein|nucleotide}.csv and input-file-name_{protein|nucleotide}_summary.csv
+test_protein.csv and test_protein_summary.csv in this example
+test_protein.csv contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for individual sequences.
+test_protein_summary.csv contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for all unique kmers across all sequences in test.fna
+test_protein_diversity_metrics.txt containing the alpha diversity metrics.
   
 Citing Mercat
 -------------
