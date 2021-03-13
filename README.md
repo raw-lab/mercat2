@@ -47,6 +47,8 @@ The above command:
 All the above examples can also be used with -f input-folder instead of -i input-file option</br>
 
       Example: mercat -f /path/to/input-folder -k 3 -n 8 -c 10 --- Runs mercat on all inputs in the folder
+
+For folder input ,in addition to the output files PCA analysis is done all the samples.
   
 Citing Mercat
 -------------
