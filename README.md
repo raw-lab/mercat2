@@ -6,7 +6,22 @@ MerCat2: python code for versatile k-mer counter and diversity estimator for dat
   
 Installing MerCat2: 
  - Available via Anaconda: Enable BioConda repo and run `conda install mercat2`  <br/>
- - Put correct installer infomation (detailed from source)
+
+Source
+ - Download mercat_setup.py from bin  <br/>
+ - Run pyhon mercat_setup.py to install all required dependencies  <br/>
+ - Go to downloaded mercat2 folder and run commands <br/>
+
+Usage
+-i I path-to-input-file
+-f F path-to-folder-containing-input-files
+-k K kmer length
+-n N no of cores [default = all]
+-c C minimum kmer count [default = 10]
+-pro run mercat on protein input file specified as .faa
+-p run prodigal on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta','fastq']
+-h, --help show this help message
+
  
   
 Citing Mercat
