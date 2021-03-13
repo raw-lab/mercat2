@@ -13,15 +13,14 @@ Source
  - Go to downloaded mercat2 folder and run commands <br/>
 
 Usage <br/>
-
-  -i I path-to-input-file <br/>
-  -f F path-to-folder-containing-input-files <br/>
-  -k K kmer length<br/>
-  -n N no of cores [default = all]<br/>
-  -c C minimum kmer count [default = 10]<br/>
-  -pro run mercat on protein input file specified as .faa<br/>
-  -p run prodigal on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta','fastq']<br/>
-  -h, --help show this help message<br/>
+ - -i I path-to-input-file <br/>
+ - -f F path-to-folder-containing-input-files <br/>
+ - -k K kmer length<br/>
+ - -n N no of cores [default = all]<br/>
+ - -c C minimum kmer count [default = 10]<br/>
+ - -pro run mercat on protein input file specified as .faa<br/>
+ - -p run prodigal on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta','fastq']<br/>
+ - -h, --help show this help message<br/>
 
  
   
