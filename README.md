@@ -7,12 +7,12 @@ MerCat2: python code for versatile k-mer counter and diversity estimator for dat
 Installing MerCat2: 
  - Available via Anaconda: Enable BioConda repo and run `conda install mercat2`  <br/>
 
-Source
+**Source** **Installer**
  - Download mercat_setup.py from bin  <br/>
  - Run pyhon mercat_setup.py to install all required dependencies  <br/>
  - Go to downloaded mercat2 folder and run commands <br/>
 
-Usage <br/>
+**Usage** <br/>
  - -i I path-to-input-file <br/>
  - -f F path-to-folder-containing-input-files <br/>
  - -k K kmer length<br/>
@@ -24,7 +24,7 @@ Usage <br/>
 
 By default mercat assumes that inputs provided is one of ['.fa', '.fna', '.ffn', '.fasta'] <br/>
 
- Example: To compute all 3-mers, run mercat -i test.fna -k 3 -n 8 -c 10 -p
+       Example: To compute all 3-mers, run mercat -i test.fna -k 3 -n 8 -c 10 -p
  
 The above command:
 
@@ -35,7 +35,7 @@ The above command:
 - test_protein_summary.csv contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for all unique kmers across all sequences in test.fna
 - test_protein_diversity_metrics.txt containing the alpha diversity metrics.
 
-Other usage examples:
+**Other** **usage** **examples**:
 
 - mercat -i test.faa -k 3 -n 8 -c 10 -pro</br>
      Run mercat on a protein input (.faa)
