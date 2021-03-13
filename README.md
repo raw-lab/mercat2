@@ -22,7 +22,9 @@ Usage <br/>
  - -p run prodigal on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta','fastq']<br/>
  - -h, --help show this help message<br/>
 
- 
+By default mercat assumes that inputs provided is one of ['.fa', '.fna', '.ffn', '.fasta']
+
+ Example: To compute all 3-mers, run mercat -i test_protien.fna -k 3 -n 8 -c 10 -p
   
 Citing Mercat
 -------------
