@@ -12,7 +12,7 @@ Source
  - Run pyhon mercat_setup.py to install all required dependencies  <br/>
  - Go to downloaded mercat2 folder and run commands <br/>
 
-Usage
+Usage <br/>
 -i I path-to-input-file <br/>
 -f F path-to-folder-containing-input-files <br/>
 -k K kmer length<br/>
