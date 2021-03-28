@@ -49,6 +49,9 @@ All the above examples can also be used with -f input-folder instead of -i input
       Example: python mercat2.py -f /path/to/input-folder -k 3 -n 8 -c 10 --- Runs mercat on all inputs in the folder
 
 For folder input , PCA analysis for all the samples is plotted in PCA_plot.html.
+
+PCA analysis result for 5 sample files in data:
+doc/PCA.png
   
 Citing Mercat
 -------------
