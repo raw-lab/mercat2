@@ -51,7 +51,8 @@ All the above examples can also be used with -f input-folder instead of -i input
 For folder input , PCA analysis for all the samples is plotted in PCA_plot.html.
 
 PCA analysis result for 5 sample files in data:
-doc/PCA.png
+
+ ![GitHub Logo](doc/PCA.png)
   
 Citing Mercat
 -------------
