@@ -24,29 +24,29 @@ Installing MerCat2:
 
 By default mercat assumes that inputs provided is one of ['.fa', '.fna', '.ffn', '.fasta'] <br/>
 
-       Example: To compute all 3-mers, run mercat -i test.fna -k 3 -n 8 -c 10 -p
+       Example: To compute all 3-mers, run python mercat2.py -i RW2.fna -k 3 -n 8 -c 10 -p
  
 The above command:
 
 - Runs prodigal on test.fna, then runs mercat on the resulting protein file.<br/>
 - Results are generally stored in input-file-name_{protein|nucleotide}.csv and input-file-name_{protein|nucleotide}_summary.csv
-       - test_protein.csv and test_protein_summary.csv in this example
-- test_protein.csv contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for individual sequences.
-- test_protein_summary.csv contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for all unique kmers across all sequences in test.fna
-- test_protein_diversity_metrics.txt containing the alpha diversity metrics.
+       - RW2_protein.csv and RW2_protein_summary.csv in this example
+- RW2_protein.csv contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for individual sequences.
+- RW2_protein_summary.csv contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for all unique kmers across all sequences in test.fna
+- RW2_protein_diversity_metrics.txt containing the alpha diversity metrics.
 
 **Other** **usage** **examples**:
 
-- mercat -i test.faa -k 3 -n 8 -c 10 -pro</br>
+- python mercat2.py -i test.faa -k 3 -n 8 -c 10 -pro</br>
      Run mercat on a protein input (.faa)
-- mercat -i test.fna -k 3 -n 8 -c 10 -p </br>
+- python mercat2.py -i RW2.fna -k 3 -n 8 -c 10 -p </br>
       Run prodigal on nucleotide input, generate a .faa protein file and run mercat on it
-- mercat -i test.fna -k 3 -n 8 -c 10 </br>
+- python mercat2.py -i RW2.fna -k 3 -n 8 -c 10 </br>
       Run mercat on nucleotide input - one of ['.fa', '.fna', '.ffn', '.fasta','fastq']
 
 All the above examples can also be used with -f input-folder instead of -i input-file option</br>
 
-      Example: mercat -f /path/to/input-folder -k 3 -n 8 -c 10 --- Runs mercat on all inputs in the folder
+      Example: python mercat2.py -f /path/to/input-folder -k 3 -n 8 -c 10 --- Runs mercat on all inputs in the folder
 
 For folder input , PCA analysis for all the samples is plotted in PCA_plot.html.
   
