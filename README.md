@@ -25,7 +25,7 @@ MerCat2: python code for versatile k-mer counter and diversity estimator for dat
 
 By default mercat assumes that inputs provided is nucleotide mode of ['.fa', '.fna', '.ffn', '.fasta'] <br/>
 
-**Usage examples**:
+**Usage examples**
 
 ****Run mercat2 on a protein mode (protein fasta - '.faa')****</br>
 `python mercat2.py -i test.faa -k 3 -n 8 -c 10 -pro`</br>
