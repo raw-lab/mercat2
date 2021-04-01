@@ -22,33 +22,32 @@ Installing MerCat2:
  - -p run prodigal on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta','fastq']<br/>
  - -h, --help show this help message<br/>
 
-By default mercat assumes that inputs provided is one of ['.fa', '.fna', '.ffn', '.fasta'] <br/>
+By default mercat assumes that inputs provided is nucleotide mode of ['.fa', '.fna', '.ffn', '.fasta'] <br/>
 
-       Example: To compute all 3-mers, run python mercat2.py -i RW2.fna -k 3 -n 8 -c 10 -p
- 
-The above command:
+**Usage examples**:
 
-- Runs prodigal on test.fna, then runs mercat on the resulting protein file.<br/>
-- Results are generally stored in input-file-name_{protein|nucleotide}.csv and input-file-name_{protein|nucleotide}_summary.csv
-       - RW2_protein.csv and RW2_protein_summary.csv in this example
-- RW2_protein.csv contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for individual sequences.
-- RW2_protein_summary.csv contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for all unique kmers across all sequences in test.fna
-- RW2_protein_diversity_metrics.txt containing the alpha diversity metrics.
+***Run mercat2 on a protein mode (protein fasta - faa)***
+`python mercat2.py -i test.faa -k 3 -n 8 -c 10 -pro`</br>
 
-**Other** **usage** **examples**:
+***Run mercat2 on a nucleotide mode (nucleotide fasta - '.fa', '.fna', '.ffn', '.fasta')***
+`python mercat2.py -i RW2.fna -k 3 -n 8 -c 10 -p` </br>
 
-- python mercat2.py -i test.faa -k 3 -n 8 -c 10 -pro</br>
-     Run mercat on a protein input (.faa)
-- python mercat2.py -i RW2.fna -k 3 -n 8 -c 10 -p </br>
-      Run prodigal on nucleotide input, generate a .faa protein file and run mercat on it
-- python mercat2.py -i RW2.fna -k 3 -n 8 -c 10 </br>
-      Run mercat on nucleotide input - one of ['.fa', '.fna', '.ffn', '.fasta','fastq']
+***Run mercat2 on a nucleotide mode raw data (nucleotide fastq - '.fastq')***
+`python mercat2.py -i RW2.fastq -k 3 -n 8 -c 10 -p` </br>
 
-All the above examples can also be used with -f input-folder instead of -i input-file option</br>
+***Run on many samples within a folder***
+`python mercat2.py -f /path/to/input-folder -k 3 -n 8 -c 10`</br>
 
-      Example: python mercat2.py -f /path/to/input-folder -k 3 -n 8 -c 10 --- Runs mercat on all inputs in the folder
-
-For folder input, PCA analysis for all the samples is plotted in PCA_plot.html.
+**Outputs**
+- Results are stored in input-file-name_{protein|nucleotide}.csv and input-file-name_{protein|nucleotide}_summary.csv </br>
+   -  file-name_protein.csv and file-name_protein_summary.csv (for example) </br>
+- file-name_protein.csv (If run in protein mode)</br>
+   -  Contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for individual sequences.</br>
+- file-name_protein_summary.csv (If run in nucleotide mode)</br>
+   -  Contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for individual sequences.</br>
+- file-name_diversity_metrics.txt </br>
+   -  Contains the alpha diversity metrics.</br>
+- If 5 samples or more it will generate a PCA, PCA analysis for all the samples is plotted in PCA_plot.html.</br>
 
 PCA analysis result for 5 sample files in data:
 
@@ -57,7 +56,6 @@ PCA analysis result for 5 sample files in data:
 Citing Mercat
 -------------
 If you are publishing results obtained using MerCat2, please cite:
-
 
 
 CONTACT
