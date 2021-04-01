@@ -4,12 +4,12 @@ MerCat2: python code for versatile k-mer counter and diversity estimator for dat
 ![GitHub Logo](doc/mercat_workflow.jpg)
 
   
-Installing MerCat2: 
+**Installing MerCat2:** 
  - Available via Anaconda: Enable BioConda repo and run `conda install mercat2`  <br/>
 
-**Source** **Installer**
+**Source Installer**
  - Download mercat_setup.py from bin  <br/>
- - Run pyhon mercat_setup.py to install all required dependencies  <br/>
+ - Run python mercat_setup.py to install all required dependencies  <br/>
  - Go to downloaded mercat2 folder and run commands <br/>
 
 **Usage** <br/>
@@ -19,7 +19,8 @@ Installing MerCat2:
  - -n N no of cores [default = all]<br/>
  - -c C minimum kmer count [default = 10]<br/>
  - -pro run mercat on protein input file specified as .faa<br/>
- - -p run prodigal on nucleotide assembled contigs. Must be one of ['.fa', '.fna', '.ffn', '.fasta','fastq']<br/>
+ - -p run prodigal on nucleotide assembled contigs. 
+    - Must be one of ['.fa', '.fna', '.ffn', '.fasta','fastq']<br/>
  - -h, --help show this help message<br/>
 
 By default mercat assumes that inputs provided is nucleotide mode of ['.fa', '.fna', '.ffn', '.fasta'] <br/>
@@ -35,7 +36,7 @@ By default mercat assumes that inputs provided is nucleotide mode of ['.fa', '.f
 ***Run mercat2 on a nucleotide mode raw data (nucleotide fastq - '.fastq')***</br>
 `python mercat2.py -i RW2.fastq -k 3 -n 8 -c 10 -p` </br>
 
-***Run on many samples within a folder***
+***Run on many samples within a folder***</br>
 `python mercat2.py -f /path/to/input-folder -k 3 -n 8 -c 10`</br>
 
 **Outputs**
