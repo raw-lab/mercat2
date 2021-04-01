@@ -26,13 +26,13 @@ By default mercat assumes that inputs provided is nucleotide mode of ['.fa', '.f
 
 **Usage examples**:
 
-***Run mercat2 on a protein mode (protein fasta - faa)***
+***Run mercat2 on a protein mode (protein fasta - faa)***</br>
 `python mercat2.py -i test.faa -k 3 -n 8 -c 10 -pro`</br>
 
-***Run mercat2 on a nucleotide mode (nucleotide fasta - '.fa', '.fna', '.ffn', '.fasta')***
+***Run mercat2 on a nucleotide mode (nucleotide fasta - '.fa', '.fna', '.ffn', '.fasta')***</br>
 `python mercat2.py -i RW2.fna -k 3 -n 8 -c 10 -p` </br>
 
-***Run mercat2 on a nucleotide mode raw data (nucleotide fastq - '.fastq')***
+***Run mercat2 on a nucleotide mode raw data (nucleotide fastq - '.fastq')***</br>
 `python mercat2.py -i RW2.fastq -k 3 -n 8 -c 10 -p` </br>
 
 ***Run on many samples within a folder***
