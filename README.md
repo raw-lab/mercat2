@@ -48,7 +48,8 @@ By default mercat assumes that inputs provided is nucleotide mode of ['.fa', '.f
    -  Contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for individual sequences.</br>
 - file-name_diversity_metrics.txt </br>
    -  Contains the alpha diversity metrics.</br>
-- If 5 samples or more it will generate a PCA, PCA analysis for all the samples is plotted in PCA_plot.html.</br>
+- If 5 samples or more it will generate a PCA </br>
+   -  PCA analysis for all the samples is plotted in PCA_plot.html.</br>
 
 PCA analysis result for 5 sample files in data:
 
