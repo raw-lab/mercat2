@@ -48,7 +48,7 @@ All the above examples can also be used with -f input-folder instead of -i input
 
       Example: python mercat2.py -f /path/to/input-folder -k 3 -n 8 -c 10 --- Runs mercat on all inputs in the folder
 
-For folder input , PCA analysis for all the samples is plotted in PCA_plot.html.
+For folder input, PCA analysis for all the samples is plotted in PCA_plot.html.
 
 PCA analysis result for 5 sample files in data:
 
@@ -66,5 +66,5 @@ CONTACT
 Please send all queries to Mounika Ramapuram Naik &nbsp;&nbsp;      <a href="mailto:mramapur@uncc.edu?"><img src="doc/gmail.png" style="width:25px;height:25px"/>    </a> &nbsp; &nbsp;  <br /> 
 Dr. Richard Allen White III &nbsp;&nbsp;   <a href="mailto:rwhit101@uncc.edu?"><img src="doc/gmail.png" style="width:25px;height:25px"/>      </a>
  <br />
-Or [open an issue](https://github.com/raw-lab/cerberus/issues).
+Or [open an issue](https://github.com/raw-lab/mercat2/issues).
 
