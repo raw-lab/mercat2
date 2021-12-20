@@ -11,6 +11,9 @@ from functools import reduce
 import glob
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from skbio.diversity import alpha as skbio_alpha
+from skbio.diversity import beta as skbio_beta
+import itertools
 import os
 
 
@@ -181,10 +184,6 @@ def calculate_hydro(seq):
         if c in hydro_scores: hydro += hydro_scores[c]
     return round(hydro,2)
 
-
-from skbio.diversity import alpha as skbio_alpha
-from skbio.diversity import beta as skbio_beta
-import itertools
 
 def mercat_compute_alpha_beta_diversity(counts,bif):
 

@@ -2,7 +2,7 @@
 
 """mercat.py: Python code for Parallel k-mer counting."""
 
-__author__      = "Richard A. White III,Mounika Ramapuram Naik"
+__author__      = "Richard A. White III, Mounika Ramapuram Naik"
 __copyright__   = "Copyright 2021"
 
 import sys
@@ -23,32 +23,34 @@ from argparse import RawDescriptionHelpFormatter
 
 import dask.dataframe as dd
 
-from metrics import *
-from Chunker import mercat_chunker
+# Mercat libraries
+import mercat2.metrics
+import mercat2.Chunker
 
-import warnings
-warnings.filterwarnings("ignore")
+#import warnings
+#warnings.filterwarnings("ignore")
 
 
-def name(i):
-    return str(i)
+# GLOBAL VARIABLES
+protein_file_ext = ['.fa','.fna','.ffn','.fasta']
+
 
 def fastq_processing(fq_path, path, f_name,file):
-    trim_path=path+'/'+f_name+"_trim.fastq"
-    cmd="fastqc "+fq_path
-    cmd1="fastp -i "+fq_path+" -o " + trim_path
-    cmd2="fastqc "+trim_path
-    trim_fna=path+'/'+f_name+"_trim.fna"
-    cmd3="sed -n '1~4s/^@/>/p;2~4p' "+trim_path+"  > "+trim_fna
+    trim_path = path+'/'+f_name+"_trim.fastq"
+    cmd = "fastqc "+fq_path
+    cmd1 = "fastp -i "+fq_path+" -o " + trim_path
+    cmd2 = "fastqc "+trim_path
+    trim_fna = path+'/'+f_name+"_trim.fna"
+    cmd3 = "sed -n '1~4s/^@/>/p;2~4p' "+trim_path+"  > "+trim_fna
     subprocess.call(cmd,shell=True)
     subprocess.call(cmd1,shell=True)
     subprocess.call(cmd2,shell=True)
     subprocess.call(cmd3,shell=True)
     return trim_fna
 
+
 def check_command(cmd):
     cmd1 = cmd
-    if cmd == 'trimmomatic': cmd1 = 'trimmomatic -version'
     with open(os.devnull, 'w') as FNULL:
         try:
             subprocess.check_call(cmd1, stdout=FNULL, stderr=FNULL, shell=True)
@@ -57,9 +59,6 @@ def check_command(cmd):
             print(("Mercat Error: %s not found, please setup %s using: conda install %s" %(cmd,cmd,cmd)))
             sys.exit(1)
 
-
-
-protein_file_ext = ['.fa','.fna','.ffn','.fasta']
 
 def parseargs(argv=None):
 
@@ -186,13 +185,11 @@ def mercat_main():
                 # skip directories
                 path_q, file_q = os.path.split(mip)
                 f_name, f_ext = os.path.splitext(file_q)
-                if f_ext=='.fastq':
-                    f_name=f_name.split('.')[0]
+                if f_ext == '.fastq':
+                    f_name = f_name.split('.')[0]
                     # print(path_q+","+args.i)
-                    mip=fastq_processing(mip,path_q,f_name,file_q)
+                    mip = fastq_processing(mip, path_q, f_name, file_q)
                 all_ipfiles.append(mip)
-
-
     else:
         #m_inputfolder = os.getcwd()
         m_inputfolder = os.path.dirname(os.path.abspath(m_inputfile))
@@ -221,10 +218,10 @@ def mercat_main():
         is_chunked = False
         if inputfile_size >= (mfile_size_split*1024*1024): #100MB
             print("Large input file provided: Splitting it into smaller files...\n")
-            mercat_chunker(m_inputfile,dir_runs,str(mfile_size_split)+"M",">")
+            mercat2.Chunker.Chunker(m_inputfile, dir_runs, str(mfile_size_split)+"M", ">")
             os.chdir(dir_runs)
             all_chunks_ipfile = glob.glob("*")
-            is_chunked=True
+            is_chunked = True
         else:
             os.chdir(dir_runs)
             all_chunks_ipfile.append(m_inputfile)
@@ -239,7 +236,6 @@ def mercat_main():
 
             bif = os.path.splitext(os.path.basename(inputfile))[0] + "_" + np_string
 
-           
 
             "Run prodigal if specified"
             '''prodigal -i test_amino-acid.fa -o output.gff -a output.orf_pro.faa  -f gff -p meta -d output.orf_nuc'''
@@ -258,21 +254,15 @@ def mercat_main():
             print(("Running mercat using " + str(num_cores) + " cores"))
             print(("input file: " + inputfile))
 
+            start_time = timeit.default_timer()
             sequences = OrderedDict()
             is_fastq = False
-
-
-            start_time = timeit.default_timer()
-
-
             with open(inputfile,'r') as f:
                 for line in f:
                     if line.startswith(">"): break
                     elif line.startswith("@"):
                         is_fastq = True
                         break
-
-
 
             with open(inputfile,'r') as f:
                 if not is_fastq:
@@ -281,7 +271,8 @@ def mercat_main():
                     for line in f:
                         line = line.strip()
                         if line.startswith(">"):
-                            if sname: sequences[sname] = ""
+                            if sname:
+                                sequences[sname] = ""
                             if seq:
                                 sequences[sname] = seq
                                 seq = ""
@@ -293,7 +284,6 @@ def mercat_main():
 
                     #assert sname and seq
                     sequences[sname] = seq
-
                 else: #process fastq file
                     seq = ""
                     sname = ""
@@ -332,20 +322,20 @@ def mercat_main():
 
             significant_kmers = []
             for k in kmerlist:
-                if kmerlist[k] >= prune_kmer: significant_kmers.append(k)
+                if kmerlist[k] >= prune_kmer:
+                    significant_kmers.append(k)
 
             print(("Total number of " + kmerstring +  " found: " + str(humanize.intword(len(kmerlist)))))
             print((kmerstring +  " with count >= " + str(prune_kmer) + ": " + str(humanize.intword(len(significant_kmers)))))
 
-            
 
             if mflag_protein:
                 df = pd.DataFrame(0.0, index=significant_kmers, columns=['Count',"PI","MW","Hydro"])
                 for k in significant_kmers:
                     df.at[k,'Count'] = kmerlist[k]
-                    df.at[k,'PI'] = predict_isoelectric_point_ProMoST(k)
-                    df.at[k,'MW'] = calculate_MW(k)
-                    df.at[k,'Hydro'] = calculate_hydro(k)
+                    df.at[k,'PI'] = mercat2.metrics.predict_isoelectric_point_ProMoST(k)
+                    df.at[k,'MW'] = mercat2.metrics.calculate_MW(k)
+                    df.at[k,'Hydro'] = mercat2.metrics.calculate_hydro(k)
 
                 df.to_csv(bif + "_summary.csv", index_label=kmerstring, index=True)
             else:
@@ -362,7 +352,6 @@ def mercat_main():
 
             splitSummaryFiles.append(bif + "_summary.csv")
 
-            
 
             print(("Total time: " + str(round(timeit.default_timer() - start_time,2)) + " secs"))
 
@@ -373,7 +362,7 @@ def mercat_main():
         df10 = dfgb.nlargest(10,'Count').compute()
         dfsum = dfgb.sum(0).compute()
 
-        dfgb.to_csv("./" + basename_ipfile + "_finalSummary*.csv", index_label=kmerstring, name_function=name)
+        dfgb.to_csv("./" + basename_ipfile + "_finalSummary*.csv", index_label=kmerstring, name_function=lambda name: str(name))
 
         if mflag_protein:
             df10[['PI', 'MW', 'Hydro']] = df10[['PI', 'MW', 'Hydro']] / num_chunks
@@ -384,7 +373,7 @@ def mercat_main():
 
         all_counts = dfgb.Count.values.compute().astype(int)
         # print(all_counts)
-        mercat_compute_alpha_beta_diversity(all_counts,basename_ipfile)
+        mercat2.metrics.mercat_compute_alpha_beta_diversity(all_counts,basename_ipfile)
 
         if is_chunked:
             for tempfile in all_chunks_ipfile:
@@ -401,20 +390,19 @@ def mercat_main():
     for basename_ipfile in top10_all_samples:
         df10,_ = top10_all_samples[basename_ipfile]
         if mflag_protein:
-            mercat_scatter_plots(basename_ipfile, 'PI', df10, kmerstring)
-            mercat_scatter_plots(basename_ipfile, 'MW', df10, kmerstring)
-            mercat_scatter_plots(basename_ipfile, 'Hydro', df10, kmerstring)
+            mercat2.metrics.mercat_scatter_plots(basename_ipfile, 'PI', df10, kmerstring)
+            mercat2.metrics.mercat_scatter_plots(basename_ipfile, 'MW', df10, kmerstring)
+            mercat2.metrics.mercat_scatter_plots(basename_ipfile, 'Hydro', df10, kmerstring)
         else:
-            mercat_scatter_plots(basename_ipfile, 'GC_Percent', df10, kmerstring)
-            mercat_scatter_plots(basename_ipfile, 'AT_Percent', df10, kmerstring)
+            mercat2.metrics.mercat_scatter_plots(basename_ipfile, 'GC_Percent', df10, kmerstring)
+            mercat2.metrics.mercat_scatter_plots(basename_ipfile, 'AT_Percent', df10, kmerstring)
 
     sbname = os.path.basename(m_inputfolder)
     if len(all_ipfiles) == 1: sbname = os.path.basename(all_ipfiles[0])
-    mercat_stackedbar_plots(sbname,top10_all_samples, 'Count', kmerstring)
-    s=m_inputfolder+"/mercat_results/"
+    mercat2.metrics.mercat_stackedbar_plots(sbname,top10_all_samples, 'Count', kmerstring)
+    s = m_inputfolder+"/mercat_results/"
     if len(all_ipfiles) >= 4:
-       PCA1(s)
-
+       mercat2.metrics.PCA1(s)
 
 
 if __name__ == "__main__":
