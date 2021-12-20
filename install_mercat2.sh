@@ -35,13 +35,13 @@ function install_conda {
 
     # create the mercat environment in conda
     conda env remove --name mercat -y
-    conda create -n mercat -c conda-forge -c bioconda fastqc fastp prodigal python=3.7 -y
+    conda create -n mercat -c conda-forge -c bioconda fastqc fastp prodigal scikit-bio python=3.7 -y
 
     # install additional pip requirements
     conda activate mercat
-    pip install build
-    pip install setuptools metaomestats ray[default]
-    setuptools numpy pandas humanize plotly psutil joblib dask scikit-learn scikit-bio
+    pip install build setuptools
+    #pip install metaomestats ray[default]
+    #setuptools numpy pandas humanize plotly psutil joblib dask scikit-learn scikit-bio
     # TODO: install from local folder for now
     # TODO: Change this to proper install once uploaded to pypi and bioconda.
     install_pip

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""mercat.py: Python code for Parallel k-mer counting."""
+"""mercat2.py: Python code for Parallel k-mer counting."""
 
 __author__      = "Richard A. White III, Mounika Ramapuram Naik"
 __copyright__   = "Copyright 2021"
@@ -17,6 +17,7 @@ import subprocess
 import pandas as pd
 from collections import OrderedDict
 from joblib import Parallel, delayed
+import ray
 
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
@@ -24,8 +25,9 @@ from argparse import RawDescriptionHelpFormatter
 import dask.dataframe as dd
 
 # Mercat libraries
-import mercat2.metrics
-import mercat2.Chunker
+from mercat2 import metrics
+from mercat2 import Chunker
+import mercat2.data
 
 #import warnings
 #warnings.filterwarnings("ignore")
