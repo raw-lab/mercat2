@@ -63,7 +63,6 @@ def check_command(cmd):
 
 
 def parseargs(argv=None):
-
     '''Command line options.'''
 
     if argv is None:
@@ -94,7 +93,6 @@ def parseargs(argv=None):
             args.i=fastq_processing(args.i,path_q,f_name,file_q)
     if args.i and args.f:
         parser.error("Can only specify either an input file (-i) or path to folder containing input files (-f) at a time")
-
     if args.i:
         if os.path.exists(args.i) < 1:
             path_error = "file " + args.i + " does not exist.\n"
@@ -105,19 +103,16 @@ def parseargs(argv=None):
             parser.error(path_error)
     else:
         parser.error("Please provide either an input file (-i) or an input folder (-f)")
-
-
     if args.p:
         if args.pro: parser.error("Can only provide one of -p or -pro option at a time")
         check_command('prodigal')
-
-   
     return [args,parser]
 
 
 def get_all_substrings(input_string,kmer):
     length = len(input_string)
     return [input_string[i:i + kmer] for i in range(length-kmer+1)]
+
 
 def calculateKmerCount(cseq,kmer): ###(seq,cseq, prune_kmer,kmer):
     kmerlist = dict()
@@ -164,7 +159,6 @@ def mercat_main():
     # mflag_trimmomatic = __args__.t
     mflag_protein = __args__.pro
     mfile_size_split = __args__.s
-
     kmerstring = str(kmer) + "-mers"
     
     if not mfile_size_split:
@@ -181,7 +175,6 @@ def mercat_main():
         os.chdir(m_inputfolder)
         #Assume all have same ext
         for fname in os.listdir(m_inputfolder):
-            
             mip = os.path.join(m_inputfolder, fname)
             if not os.path.isdir(mip):
                 # skip directories
@@ -196,7 +189,7 @@ def mercat_main():
         #m_inputfolder = os.getcwd()
         m_inputfolder = os.path.dirname(os.path.abspath(m_inputfile))
         all_ipfiles.append(os.path.abspath(m_inputfile))
-        
+    
     top10_all_samples = dict()
     # print (len(all_ipfiles))
     for m_inputfile in all_ipfiles:
@@ -228,16 +221,11 @@ def mercat_main():
             os.chdir(dir_runs)
             all_chunks_ipfile.append(m_inputfile)
 
-        #print all_chunks_ipfile
-        #sys.exit(1)
-
-
         splitSummaryFiles = []
 
         for inputfile in all_chunks_ipfile:
 
             bif = os.path.splitext(os.path.basename(inputfile))[0] + "_" + np_string
-
 
             "Run prodigal if specified"
             '''prodigal -i test_amino-acid.fa -o output.gff -a output.orf_pro.faa  -f gff -p meta -d output.orf_nuc'''
@@ -246,8 +234,6 @@ def mercat_main():
                 gen_protein_file = bif+"_pro.faa"
                 prod_cmd = "prodigal -i %s -o %s -a %s -f gff -p meta -d %s" % (
                 inputfile, bif + ".gff", gen_protein_file, bif + "_nuc.ffn")
-
-               
                 print(prod_cmd)
                 with open(os.devnull, 'w') as FNULL:
                     subprocess.call(prod_cmd, stdout=FNULL, stderr=FNULL, shell=True)
@@ -265,7 +251,6 @@ def mercat_main():
                     elif line.startswith("@"):
                         is_fastq = True
                         break
-
             with open(inputfile,'r') as f:
                 if not is_fastq:
                     seq = ""
@@ -283,7 +268,6 @@ def mercat_main():
                         else:
                             line = line.replace("*","")
                             seq += line
-
                     #assert sname and seq
                     sequences[sname] = seq
                 else: #process fastq file
@@ -300,15 +284,12 @@ def mercat_main():
                         else:
                             if sname not in sequences: seq = line
 
-
             #print sequences.keys()[0] + "="+ sequences.values()[0]
 
             print(("Number of sequences in " + inputfile + " = "+ str(humanize.intword(len(sequences)))))
-
             
             results = Parallel(n_jobs=num_cores)(
                 delayed(calculateKmerCount)(sequences[seq], kmer) for seq in sequences)
-
 
             kmerlist = dict()
             #kmerlist_all_seq = dict()
@@ -318,7 +299,6 @@ def mercat_main():
                     if k in kmerlist:
                         kmerlist[k] += v
                     else: kmerlist[k] = v
-
 
             print(("Time to compute " + kmerstring +  ": " + str(round(timeit.default_timer() - start_time,2)) + " secs"))
 
@@ -330,7 +310,6 @@ def mercat_main():
             print(("Total number of " + kmerstring +  " found: " + str(humanize.intword(len(kmerlist)))))
             print((kmerstring +  " with count >= " + str(prune_kmer) + ": " + str(humanize.intword(len(significant_kmers)))))
 
-
             if mflag_protein:
                 df = pd.DataFrame(0.0, index=significant_kmers, columns=['Count',"PI","MW","Hydro"])
                 for k in significant_kmers:
@@ -338,7 +317,6 @@ def mercat_main():
                     df.at[k,'PI'] = mercat2.metrics.predict_isoelectric_point_ProMoST(k)
                     df.at[k,'MW'] = mercat2.metrics.calculate_MW(k)
                     df.at[k,'Hydro'] = mercat2.metrics.calculate_hydro(k)
-
                 df.to_csv(bif + "_summary.csv", index_label=kmerstring, index=True)
             else:
                 df = pd.DataFrame(0, index=significant_kmers, columns=['Count',"GC_Percent","AT_Percent"])
@@ -353,10 +331,7 @@ def mercat_main():
                 df.to_csv(bif + "_summary.csv", index_label=kmerstring, index=True)
 
             splitSummaryFiles.append(bif + "_summary.csv")
-
-
             print(("Total time: " + str(round(timeit.default_timer() - start_time,2)) + " secs"))
-
 
         num_chunks = len(all_chunks_ipfile)
         df = dd.read_csv(splitSummaryFiles)
@@ -374,7 +349,6 @@ def mercat_main():
         top10_all_samples[sample_name] = [df10,dfsum.Count]
 
         all_counts = dfgb.Count.values.compute().astype(int)
-        # print(all_counts)
         mercat2.metrics.mercat_compute_alpha_beta_diversity(all_counts,basename_ipfile)
 
         if is_chunked:
@@ -409,4 +383,3 @@ def mercat_main():
 
 if __name__ == "__main__":
     mercat_main()
-   
