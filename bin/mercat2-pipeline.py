@@ -2,8 +2,8 @@
 
 """mercat2.py: Python code for Parallel k-mer counting."""
 
-__author__      = "Richard A. White III, Mounika Ramapuram Naik"
-__copyright__   = "Copyright 2021"
+__author__      = "Jose L. Figueroa III, Richard A. White III"
+__copyright__   = "Copyright 2022"
 
 import sys
 import re
