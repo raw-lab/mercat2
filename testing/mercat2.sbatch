@@ -25,11 +25,6 @@ module load anaconda3
 eval "$(conda shell.bash hook)"
 conda activate mercat
 
-if [ "$SLURM_NNODES" -gt 1 ]; then
-  echo "Initializing Ray on $SLURM_NNODES Nodes"
-  source mercat2_slurm.sh
-fi
-
 command time mercat2-pipeline.py -k 4 -f 5_genomes
 
 echo ""

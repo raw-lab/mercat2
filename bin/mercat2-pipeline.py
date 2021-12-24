@@ -6,7 +6,6 @@ __author__      = "Richard A. White III, Mounika Ramapuram Naik"
 __copyright__   = "Copyright 2021"
 
 import sys
-import re
 import os
 import glob
 import psutil
@@ -17,7 +16,6 @@ import subprocess
 import pandas as pd
 from collections import OrderedDict
 from joblib import Parallel, delayed
-import ray
 
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
@@ -25,12 +23,9 @@ from argparse import RawDescriptionHelpFormatter
 import dask.dataframe as dd
 
 # Mercat libraries
-from mercat2 import metrics
-from mercat2 import Chunker
-import mercat2.data
-
-#import warnings
-#warnings.filterwarnings("ignore")
+import mercat2
+from mercat2 import (Chunker, report)
+from mercat2 import mercat2_metrics
 
 
 # GLOBAL VARIABLES
@@ -109,24 +104,14 @@ def parseargs(argv=None):
     return [args,parser]
 
 
-def get_all_substrings(input_string,kmer):
-    length = len(input_string)
-    return [input_string[i:i + kmer] for i in range(length-kmer+1)]
-
-
 def calculateKmerCount(cseq,kmer): ###(seq,cseq, prune_kmer,kmer):
     kmerlist = dict()
-    ###kmerlist_all_seq = dict()
-    #cseq = sequences[seq] #Get current sequence
-    sslist = get_all_substrings(cseq,kmer) # get all substrings of current sequence
-    ###kmerlist_all_seq[seq] = dict() #kmer count for each substring of current sequence
-    # print(("Memory CPU utilisation"+str(psutil.virtual_memory().percent)))
-    for ss in sslist:
-        if ss not in kmerlist: kmerlist[ss] = 0 #global kmer count for substring ss
-        count = len(re.findall(r'(?=(%s))' % re.escape(ss), cseq))
-        kmerlist[ss] += count #global kmer count for substring ss
-       
-    return kmerlist #[kmerlist,kmerlist_all_seq]
+    for i in range((len(cseq)-kmer)+1):
+        k = cseq[i:i+kmer]
+        if k not in kmerlist:
+            kmerlist[k] = 0
+        kmerlist[k] += 1
+    return kmerlist
 
 
 def check_args(ipfile,args,def_option,m_parser):
@@ -140,7 +125,7 @@ def check_args(ipfile,args,def_option,m_parser):
         if given_ext not in protein_file_ext:
             m_parser.error("Input file provided should be one of the following formats: " + str(protein_file_ext))
 
-   
+    
     if args.pro:
         if given_ext != ".faa":
             m_parser.error("Input file provided should be in .faa format")
@@ -213,7 +198,7 @@ def mercat_main():
         is_chunked = False
         if inputfile_size >= (mfile_size_split*1024*1024): #100MB
             print("Large input file provided: Splitting it into smaller files...\n")
-            mercat2.Chunker.Chunker(m_inputfile, dir_runs, str(mfile_size_split)+"M", ">")
+            Chunker.Chunker(m_inputfile, dir_runs, str(mfile_size_split)+"M", ">")
             os.chdir(dir_runs)
             all_chunks_ipfile = glob.glob("*")
             is_chunked = True
@@ -314,10 +299,9 @@ def mercat_main():
                 df = pd.DataFrame(0.0, index=significant_kmers, columns=['Count',"PI","MW","Hydro"])
                 for k in significant_kmers:
                     df.at[k,'Count'] = kmerlist[k]
-                    df.at[k,'PI'] = mercat2.metrics.predict_isoelectric_point_ProMoST(k)
-                    df.at[k,'MW'] = mercat2.metrics.calculate_MW(k)
-                    df.at[k,'Hydro'] = mercat2.metrics.calculate_hydro(k)
-                df.to_csv(bif + "_summary.csv", index_label=kmerstring, index=True)
+                    df.at[k,'PI'] = mercat2_metrics.predict_isoelectric_point_ProMoST(k)
+                    df.at[k,'MW'] = mercat2_metrics.calculate_MW(k)
+                    df.at[k,'Hydro'] = mercat2_metrics.calculate_hydro(k)
             else:
                 df = pd.DataFrame(0, index=significant_kmers, columns=['Count',"GC_Percent","AT_Percent"])
                 for k in significant_kmers:
@@ -327,15 +311,15 @@ def mercat_main():
                     len_cseq = float(len(c_kmer))
                     df.at[k,'GC_Percent'] = round(((c_kmer.count("G")+c_kmer.count("C")) / len_cseq) * 100.0)
                     df.at[k,'AT_Percent'] = round(((c_kmer.count("A")+c_kmer.count("T")) / len_cseq) * 100.0)
-
-                df.to_csv(bif + "_summary.csv", index_label=kmerstring, index=True)
+            #df.to_csv(bif + "_summary.csv", index_label=kmerstring, index=True)
+            df.to_csv(bif + "_summary.csv", index_label="k-mers", index=True)
 
             splitSummaryFiles.append(bif + "_summary.csv")
             print(("Total time: " + str(round(timeit.default_timer() - start_time,2)) + " secs"))
 
         num_chunks = len(all_chunks_ipfile)
         df = dd.read_csv(splitSummaryFiles)
-        dfgb = df.groupby(kmerstring).sum()
+        dfgb = df.groupby("k-mers").sum()
         df10 = dfgb.nlargest(10,'Count').compute()
         dfsum = dfgb.sum(0).compute()
 
@@ -349,7 +333,7 @@ def mercat_main():
         top10_all_samples[sample_name] = [df10,dfsum.Count]
 
         all_counts = dfgb.Count.values.compute().astype(int)
-        mercat2.metrics.mercat_compute_alpha_beta_diversity(all_counts,basename_ipfile)
+        mercat2_metrics.mercat_compute_alpha_beta_diversity(all_counts,basename_ipfile)
 
         if is_chunked:
             for tempfile in all_chunks_ipfile:
@@ -357,28 +341,40 @@ def mercat_main():
             for sf in splitSummaryFiles:
                 os.remove(sf)
 
-    plots_dir = m_inputfolder+"/mercat_results/plots"
+    plots_dir = os.path.join(m_inputfolder, "mercat_results", "plots")
     if os.path.exists(plots_dir):
         shutil.rmtree(plots_dir)
     os.makedirs(plots_dir)
     os.chdir(plots_dir)
 
+    figPlots = dict()
+    tsv_stats = dict()
+    # Stacked Bar Plots (top kmer counts)
+    if len(all_ipfiles) == 1:
+        sbname = os.path.basename(all_ipfiles[0])
+    else:
+        sbname = os.path.basename(m_inputfolder)
+    figPlots[sbname+'_k-mers'] = report.stackedbar_plots(sbname, top10_all_samples, 'Count', kmerstring)
+    
+    # PCA
+    subdir = m_inputfolder+"/mercat_results/"
+    if len(all_ipfiles) >= 4:
+       figPlots['PCA'] = report.PCA_plot(subdir)
+
+    # Scatter Plots
     for basename_ipfile in top10_all_samples:
         df10,_ = top10_all_samples[basename_ipfile]
         if mflag_protein:
-            mercat2.metrics.mercat_scatter_plots(basename_ipfile, 'PI', df10, kmerstring)
-            mercat2.metrics.mercat_scatter_plots(basename_ipfile, 'MW', df10, kmerstring)
-            mercat2.metrics.mercat_scatter_plots(basename_ipfile, 'Hydro', df10, kmerstring)
+            figPlots[basename_ipfile+'_PI'] = report.scatter_plots(basename_ipfile, 'PI', df10, kmerstring)
+            figPlots[basename_ipfile+'_MW'] = report.scatter_plots(basename_ipfile, 'MW', df10, kmerstring)
+            figPlots[basename_ipfile+'_Hydro'] = report.scatter_plots(basename_ipfile, 'Hydro', df10, kmerstring)
         else:
-            mercat2.metrics.mercat_scatter_plots(basename_ipfile, 'GC_Percent', df10, kmerstring)
-            mercat2.metrics.mercat_scatter_plots(basename_ipfile, 'AT_Percent', df10, kmerstring)
+            figPlots[basename_ipfile+'_GC'] = report.scatter_plots(basename_ipfile, 'GC_Percent', df10, kmerstring)
+            figPlots[basename_ipfile+'_AT'] = report.scatter_plots(basename_ipfile, 'AT_Percent', df10, kmerstring)
 
-    sbname = os.path.basename(m_inputfolder)
-    if len(all_ipfiles) == 1: sbname = os.path.basename(all_ipfiles[0])
-    mercat2.metrics.mercat_stackedbar_plots(sbname,top10_all_samples, 'Count', kmerstring)
-    s = m_inputfolder+"/mercat_results/"
-    if len(all_ipfiles) >= 4:
-       mercat2.metrics.PCA1(s)
+    # Save HTML Report
+    report.write_html(os.path.join(plots_dir, "report.html"), figPlots, tsv_stats)
+    return 0
 
 
 if __name__ == "__main__":
