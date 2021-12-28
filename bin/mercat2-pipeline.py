@@ -23,9 +23,7 @@ from argparse import RawDescriptionHelpFormatter
 import dask.dataframe as dd
 
 # Mercat libraries
-import mercat2
-from mercat2 import (Chunker, report)
-from mercat2 import mercat2_metrics
+from mercat2 import (mercat2_Chunker, mercat2_report, mercat2_metrics)
 
 
 # GLOBAL VARIABLES
@@ -198,7 +196,7 @@ def mercat_main():
         is_chunked = False
         if inputfile_size >= (mfile_size_split*1024*1024): #100MB
             print("Large input file provided: Splitting it into smaller files...\n")
-            Chunker.Chunker(m_inputfile, dir_runs, str(mfile_size_split)+"M", ">")
+            mercat2_Chunker.Chunker(m_inputfile, dir_runs, str(mfile_size_split)+"M", ">")
             os.chdir(dir_runs)
             all_chunks_ipfile = glob.glob("*")
             is_chunked = True
@@ -333,7 +331,7 @@ def mercat_main():
         top10_all_samples[sample_name] = [df10,dfsum.Count]
 
         all_counts = dfgb.Count.values.compute().astype(int)
-        mercat2_metrics.mercat_compute_alpha_beta_diversity(all_counts,basename_ipfile)
+        mercat2_metrics.compute_alpha_beta_diversity(all_counts,basename_ipfile)
 
         if is_chunked:
             for tempfile in all_chunks_ipfile:
@@ -354,26 +352,26 @@ def mercat_main():
         sbname = os.path.basename(all_ipfiles[0])
     else:
         sbname = os.path.basename(m_inputfolder)
-    figPlots[sbname+'_k-mers'] = report.stackedbar_plots(sbname, top10_all_samples, 'Count', kmerstring)
+    figPlots[sbname+'_k-mers'] = mercat2_report.stackedbar_plots(sbname, top10_all_samples, 'Count', kmerstring)
     
     # PCA
     subdir = m_inputfolder+"/mercat_results/"
     if len(all_ipfiles) >= 4:
-       figPlots['PCA'] = report.PCA_plot(subdir)
+       figPlots['PCA'] = mercat2_report.PCA_plot(subdir)
 
     # Scatter Plots
     for basename_ipfile in top10_all_samples:
         df10,_ = top10_all_samples[basename_ipfile]
         if mflag_protein:
-            figPlots[basename_ipfile+'_PI'] = report.scatter_plots(basename_ipfile, 'PI', df10, kmerstring)
-            figPlots[basename_ipfile+'_MW'] = report.scatter_plots(basename_ipfile, 'MW', df10, kmerstring)
-            figPlots[basename_ipfile+'_Hydro'] = report.scatter_plots(basename_ipfile, 'Hydro', df10, kmerstring)
+            figPlots[basename_ipfile+'_PI'] = mercat2_report.scatter_plots(basename_ipfile, 'PI', df10, kmerstring)
+            figPlots[basename_ipfile+'_MW'] = mercat2_report.scatter_plots(basename_ipfile, 'MW', df10, kmerstring)
+            figPlots[basename_ipfile+'_Hydro'] = mercat2_report.scatter_plots(basename_ipfile, 'Hydro', df10, kmerstring)
         else:
-            figPlots[basename_ipfile+'_GC'] = report.scatter_plots(basename_ipfile, 'GC_Percent', df10, kmerstring)
-            figPlots[basename_ipfile+'_AT'] = report.scatter_plots(basename_ipfile, 'AT_Percent', df10, kmerstring)
+            figPlots[basename_ipfile+'_GC'] = mercat2_report.scatter_plots(basename_ipfile, 'GC_Percent', df10, kmerstring)
+            figPlots[basename_ipfile+'_AT'] = mercat2_report.scatter_plots(basename_ipfile, 'AT_Percent', df10, kmerstring)
 
     # Save HTML Report
-    report.write_html(os.path.join(plots_dir, "report.html"), figPlots, tsv_stats)
+    mercat2_report.write_html(os.path.join(plots_dir, "report.html"), figPlots, tsv_stats)
     return 0
 
 

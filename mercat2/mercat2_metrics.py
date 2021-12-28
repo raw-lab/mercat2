@@ -171,7 +171,7 @@ def calculate_hydro(seq):
     return round(hydro,2)
 
 
-def mercat_compute_alpha_beta_diversity(counts,bif):
+def compute_alpha_beta_diversity(counts,bif):
 
     abm = dict()
 

@@ -48,6 +48,7 @@ setuptools.setup(
             'psutil',
             'joblib',
             'dask',
+            'dominate',
             'scikit-learn',
             'scikit-bio',
     ]
