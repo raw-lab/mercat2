@@ -70,8 +70,9 @@ def parseargs(argv=None):
     parser.add_argument('-k', type=int, required = True, help='kmer length')
     parser.add_argument('-n', type=int, default=num_cores, help='no of cores [default = all]')  # no of cores to use
     parser.add_argument('-c', type=int, default=10, help='minimum kmer count [default = 10]')  # minimum kmer count to report
-    parser.add_argument('-pro', action='store_true', help='protein input file')
-    parser.add_argument('-p', action='store_true', help='run prodigal on fasta file')
+    parser.add_argument('-prot', action='store_true', help='protein input file')
+    parser.add_argument('-prod', action='store_true', help='run prodigal on fasta file')
+    parser.add_argument('-frag', action='store_true', help='run FragGeneScan+ on fasta file')
     parser.add_argument('-s', type=int, nargs='?', const=100, required=False, help='Split into x MB files. Default = 100MB')
 
     # Process arguments
@@ -96,8 +97,8 @@ def parseargs(argv=None):
             parser.error(path_error)
     else:
         parser.error("Please provide either an input file (-i) or an input folder (-f)")
-    if args.p:
-        if args.pro: parser.error("Can only provide one of -p or -pro option at a time")
+    if args.prod:
+        if args.prot: parser.error("Can only provide one of -prot or -prod option at a time")
         check_command('prodigal')
     return [args,parser]
 
@@ -118,13 +119,13 @@ def check_args(ipfile,args,def_option,m_parser):
         if given_ext not in protein_file_ext:
             m_parser.error("Input file provided should be one of the following formats: " + str(protein_file_ext))
 
-    if args.p:
+    if args.prod:
         # if not args.q and given_ext not in protein_file_ext:
         if given_ext not in protein_file_ext:
             m_parser.error("Input file provided should be one of the following formats: " + str(protein_file_ext))
 
     
-    if args.pro:
+    if args.prot:
         if given_ext != ".faa":
             m_parser.error("Input file provided should be in .faa format")
 
@@ -138,9 +139,9 @@ def mercat_main():
     m_inputfolder = __args__.f
     prune_kmer = __args__.c
     # mflag_fastq = __args__.q
-    mflag_prodigal = __args__.p
+    mflag_prodigal = __args__.prod
     # mflag_trimmomatic = __args__.t
-    mflag_protein = __args__.pro
+    mflag_protein = __args__.prot
     mfile_size_split = __args__.s
     kmerstring = str(kmer) + "-mers"
     
@@ -150,7 +151,7 @@ def mercat_main():
     np_string = "nucleotide"
     if mflag_protein or mflag_prodigal: np_string = "protein"
     # def_option =  not __args__.p and not __args__.q and not __args__.pro
-    def_option =  not __args__.p and not __args__.pro
+    def_option =  not __args__.prod and not __args__.prot
 
     all_ipfiles = []
     if m_inputfolder:
