@@ -23,25 +23,12 @@ from argparse import RawDescriptionHelpFormatter
 import dask.dataframe as dd
 
 # Mercat libraries
-from mercat2 import (mercat2_Chunker, mercat2_report, mercat2_metrics)
+from mercat2 import (mercat2_qc, mercat2_Chunker, mercat2_report, mercat2_metrics)
 
 
 # GLOBAL VARIABLES
-protein_file_ext = ['.fa','.fna','.ffn','.fasta']
-
-
-def fastq_processing(fq_path, path, f_name,file):
-    trim_path = path+'/'+f_name+"_trim.fastq"
-    cmd = "fastqc "+fq_path
-    cmd1 = "fastp -i "+fq_path+" -o " + trim_path
-    cmd2 = "fastqc "+trim_path
-    trim_fna = path+'/'+f_name+"_trim.fna"
-    cmd3 = "sed -n '1~4s/^@/>/p;2~4p' "+trim_path+"  > "+trim_fna
-    subprocess.call(cmd,shell=True)
-    subprocess.call(cmd1,shell=True)
-    subprocess.call(cmd2,shell=True)
-    subprocess.call(cmd3,shell=True)
-    return trim_fna
+nucleotide_file_ext = ['.fasta', '.faa']
+protein_file_ext = ['.fa','.fna','.ffn','.fasta'] #TODO: Remove .fasta from this list
 
 
 def check_command(cmd):
@@ -84,7 +71,7 @@ def parseargs(argv=None):
         if f_ext=='.fastq':
             f_name=f_name.split('.')[0]
             print(path_q+","+args.i)
-            args.i=fastq_processing(args.i,path_q,f_name,file_q)
+            args.i = mercat2_qc.fastq_processing(args.i,path_q,f_name,file_q)
     if args.i and args.f:
         parser.error("Can only specify either an input file (-i) or path to folder containing input files (-f) at a time")
     if args.i:
@@ -103,9 +90,9 @@ def parseargs(argv=None):
     return [args,parser]
 
 
-def calculateKmerCount(cseq,kmer): ###(seq,cseq, prune_kmer,kmer):
+def calculateKmerCount(cseq, kmer):
     kmerlist = dict()
-    for i in range((len(cseq)-kmer)+1):
+    for i in range((len(cseq) - kmer) + 1):
         k = cseq[i:i+kmer]
         if k not in kmerlist:
             kmerlist[k] = 0
@@ -148,8 +135,10 @@ def mercat_main():
     if not mfile_size_split:
         mfile_size_split = 100
 
-    np_string = "nucleotide"
-    if mflag_protein or mflag_prodigal: np_string = "protein"
+    if mflag_protein or mflag_prodigal:
+        np_string = "protein"
+    else:
+        np_string = "nucleotide"
     # def_option =  not __args__.p and not __args__.q and not __args__.pro
     def_option =  not __args__.prod and not __args__.prot
 
@@ -167,10 +156,9 @@ def mercat_main():
                 if f_ext == '.fastq':
                     f_name = f_name.split('.')[0]
                     # print(path_q+","+args.i)
-                    mip = fastq_processing(mip, path_q, f_name, file_q)
+                    mip = mercat2_qc.fastq_processing(mip, path_q, f_name, file_q)
                 all_ipfiles.append(mip)
     else:
-        #m_inputfolder = os.getcwd()
         m_inputfolder = os.path.dirname(os.path.abspath(m_inputfile))
         all_ipfiles.append(os.path.abspath(m_inputfile))
     
@@ -179,7 +167,7 @@ def mercat_main():
     for m_inputfile in all_ipfiles:
         # if arg
         os.chdir(m_inputfolder)
-        check_args(m_inputfile,__args__,def_option,m_parser)
+        check_args(m_inputfile, __args__, def_option,m_parser)
 
         m_inputfile = os.path.abspath(m_inputfile)
 
@@ -192,6 +180,9 @@ def mercat_main():
         if os.path.exists(dir_runs):
             shutil.rmtree(dir_runs)
         os.makedirs(dir_runs)
+
+        # Remove Ns
+        m_inputfile, n_stats = mercat2_qc.removeN(m_inputfile, dir_runs)
 
         all_chunks_ipfile = []
         is_chunked = False
@@ -310,7 +301,6 @@ def mercat_main():
                     len_cseq = float(len(c_kmer))
                     df.at[k,'GC_Percent'] = round(((c_kmer.count("G")+c_kmer.count("C")) / len_cseq) * 100.0)
                     df.at[k,'AT_Percent'] = round(((c_kmer.count("A")+c_kmer.count("T")) / len_cseq) * 100.0)
-            #df.to_csv(bif + "_summary.csv", index_label=kmerstring, index=True)
             df.to_csv(bif + "_summary.csv", index_label="k-mers", index=True)
 
             splitSummaryFiles.append(bif + "_summary.csv")
@@ -319,20 +309,20 @@ def mercat_main():
         num_chunks = len(all_chunks_ipfile)
         df = dd.read_csv(splitSummaryFiles)
         dfgb = df.groupby("k-mers").sum()
-        df10 = dfgb.nlargest(10,'Count').compute()
+        df_top10 = dfgb.nlargest(10, 'Count').compute()
         dfsum = dfgb.sum(0).compute()
 
         dfgb.to_csv("./" + basename_ipfile + "_finalSummary*.csv", index_label=kmerstring, name_function=lambda name: str(name))
 
         if mflag_protein:
-            df10[['PI', 'MW', 'Hydro']] = df10[['PI', 'MW', 'Hydro']] / num_chunks
+            df_top10[['PI', 'MW', 'Hydro']] = df_top10[['PI', 'MW', 'Hydro']] / num_chunks
         else:
-            df10[['GC_Percent', 'AT_Percent']] = df10[['GC_Percent', 'AT_Percent']] / num_chunks
+            df_top10[['GC_Percent', 'AT_Percent']] = df_top10[['GC_Percent', 'AT_Percent']] / num_chunks
 
-        top10_all_samples[sample_name] = [df10,dfsum.Count]
+        top10_all_samples[sample_name] = [df_top10, dfsum.Count]
 
         all_counts = dfgb.Count.values.compute().astype(int)
-        mercat2_metrics.compute_alpha_beta_diversity(all_counts,basename_ipfile)
+        mercat2_metrics.compute_alpha_beta_diversity(all_counts, basename_ipfile)
 
         if is_chunked:
             for tempfile in all_chunks_ipfile:
@@ -353,23 +343,23 @@ def mercat_main():
         sbname = os.path.basename(all_ipfiles[0])
     else:
         sbname = os.path.basename(m_inputfolder)
-    figPlots[sbname+'_k-mers'] = mercat2_report.stackedbar_plots(sbname, top10_all_samples, 'Count', kmerstring)
-    
+    figPlots[sbname+'_k-mers'] = mercat2_report.stackedbar_plots(top10_all_samples, kmerstring)
+
     # PCA
     subdir = m_inputfolder+"/mercat_results/"
     if len(all_ipfiles) >= 4:
        figPlots['PCA'] = mercat2_report.PCA_plot(subdir)
 
-    # Scatter Plots
+    # Metastat Plots
     for basename_ipfile in top10_all_samples:
-        df10,_ = top10_all_samples[basename_ipfile]
+        df_top10,_ = top10_all_samples[basename_ipfile]
         if mflag_protein:
-            figPlots[basename_ipfile+'_PI'] = mercat2_report.scatter_plots(basename_ipfile, 'PI', df10, kmerstring)
-            figPlots[basename_ipfile+'_MW'] = mercat2_report.scatter_plots(basename_ipfile, 'MW', df10, kmerstring)
-            figPlots[basename_ipfile+'_Hydro'] = mercat2_report.scatter_plots(basename_ipfile, 'Hydro', df10, kmerstring)
+            figPlots[basename_ipfile+'_PI'] = mercat2_report.scatter_plots(basename_ipfile, 'PI', df_top10, kmerstring)
+            figPlots[basename_ipfile+'_MW'] = mercat2_report.scatter_plots(basename_ipfile, 'MW', df_top10, kmerstring)
+            figPlots[basename_ipfile+'_Hydro'] = mercat2_report.scatter_plots(basename_ipfile, 'Hydro', df_top10, kmerstring)
         else:
-            figPlots[basename_ipfile+'_GC'] = mercat2_report.scatter_plots(basename_ipfile, 'GC_Percent', df10, kmerstring)
-            figPlots[basename_ipfile+'_AT'] = mercat2_report.scatter_plots(basename_ipfile, 'AT_Percent', df10, kmerstring)
+            figPlots[basename_ipfile+'_GC'] = mercat2_report.scatter_plots(basename_ipfile, 'GC_Percent', df_top10, kmerstring)
+            figPlots[basename_ipfile+'_AT'] = mercat2_report.scatter_plots(basename_ipfile, 'AT_Percent', df_top10, kmerstring)
 
     # Save HTML Report
     mercat2_report.write_html(os.path.join(plots_dir, "report.html"), figPlots, tsv_stats)

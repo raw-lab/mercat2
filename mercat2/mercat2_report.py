@@ -123,7 +123,7 @@ def scatter_plots(bif,xlab,res_df,kmerstring):
 
 
 # Stacked Bar Plots
-def stackedbar_plots(inp_folder,top10_all_samples,xlab,kmerstring):
+def stackedbar_plots(top10_all_samples, kmerstring):
     axis_title_font_size = 20
     axis_tick_label_size = 18
     legend_font_size = 14
@@ -137,7 +137,7 @@ def stackedbar_plots(inp_folder,top10_all_samples,xlab,kmerstring):
     kmernames = dict()
 
     for bif in top10_all_samples:
-        res_df,total_freq_count = top10_all_samples[bif]
+        res_df, total_freq_count = top10_all_samples[bif]
         index_vals = res_df.index.values
         kmernames[bif]=index_vals
         #topk10 = min(len(index_vals), 10)
@@ -147,7 +147,7 @@ def stackedbar_plots(inp_folder,top10_all_samples,xlab,kmerstring):
         kmer_percent[bif] = []
         for i in range(0, topk10):
             fr = res_df.loc[index_vals[i], 'Count']
-            fr = round(float(fr) * 100.0 / total_freq_count,1)
+            fr = round(100.0 * float(fr) / total_freq_count, 1)
             kmer_percent[bif].append(fr)
 
     ylist = dict()
