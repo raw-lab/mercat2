@@ -7,49 +7,42 @@ __copyright__   = "Copyright 2022"
 
 import sys
 import os
-import glob
 import psutil
 import shutil
-import timeit
-import humanize
 import subprocess
 import pandas as pd
-from collections import OrderedDict
-from joblib import Parallel, delayed
-
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
+from joblib import Parallel, delayed
 
 import dask.dataframe as dd
 
 # Mercat libraries
-from mercat2 import (mercat2_qc, mercat2_Chunker, mercat2_report, mercat2_metrics)
+from mercat2 import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_report, mercat2_metrics)
 
 
 # GLOBAL VARIABLES
-nucleotide_file_ext = ['.fasta', '.faa']
-protein_file_ext = ['.fa','.fna','.ffn','.fasta'] #TODO: Remove .fasta from this list
+FILE_EXT_FASTQ = ['.fastq', '.fastq.gz']
+FILE_EXT_NUCLEOTIDE = [".fasta", ".fa", ".fna", ".ffn", ".fasta.gz", ".fa.gz", ".fna.gz", ".ffn.gz"]
+FILE_EXT_PROTEIN = [".faa", ".faa.gz"]
 
 
-def check_command(cmd):
-    cmd1 = cmd
-    with open(os.devnull, 'w') as FNULL:
-        try:
-            subprocess.check_call(cmd1, stdout=FNULL, stderr=FNULL, shell=True)
-        except subprocess.CalledProcessError as e:
-            # print e.output -- null since we suppressed output in check_call
-            print(("Mercat Error: %s not found, please setup %s using: conda install %s" %(cmd,cmd,cmd)))
-            sys.exit(1)
+## Check Command
+#
+def check_command(cmd:str):
+    '''Raises an error and exists if the given command fails'''
+    try:
+        subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Mercat Error: {cmd} not found, please setup {cmd} using: 'conda install {cmd}'")
+        sys.exit(1)
+    return
 
 
-def parseargs(argv=None):
-    '''Command line options.'''
-
-    if argv is None:
-        argv = sys.argv
-    else:
-        sys.argv.extend(argv)
-
+## Parse Arguments
+#
+def parseargs():
+    '''Returns the parsed command line options.'''
     num_cores = psutil.cpu_count(logical=False)
     parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument('-i', type=str, required=False, help='path-to-input-file') #default=nucleotide
@@ -57,293 +50,211 @@ def parseargs(argv=None):
     parser.add_argument('-k', type=int, required = True, help='kmer length')
     parser.add_argument('-n', type=int, default=num_cores, help='no of cores [default = all]')  # no of cores to use
     parser.add_argument('-c', type=int, default=10, help='minimum kmer count [default = 10]')  # minimum kmer count to report
-    parser.add_argument('-prot', action='store_true', help='protein input file')
+    parser.add_argument('-prot', action='store_true', help='assume fasta files are protein input files')
     parser.add_argument('-prod', action='store_true', help='run prodigal on fasta file')
     parser.add_argument('-frag', action='store_true', help='run FragGeneScan+ on fasta file')
-    parser.add_argument('-s', type=int, nargs='?', const=100, required=False, help='Split into x MB files. Default = 100MB')
+    parser.add_argument('-s', type=int, default=100, required=False, help='Split into x MB files. Default = 100MB')
+    parser.add_argument('-o', type=str, default='mercat_results', required=False, help="Output folder, default = 'mercat_results' in current directory")
 
     # Process arguments
     args = parser.parse_args()
-    print(args.i)
-    if args.i:
-        path_q, file_q = os.path.split(args.i)
-        f_name, f_ext = os.path.splitext(file_q)
-        if f_ext=='.fastq':
-            f_name=f_name.split('.')[0]
-            print(path_q+","+args.i)
-            args.i = mercat2_qc.fastq_processing(args.i,path_q,f_name,file_q)
+
+    # Check folder/input file options
     if args.i and args.f:
         parser.error("Can only specify either an input file (-i) or path to folder containing input files (-f) at a time")
     if args.i:
-        if os.path.exists(args.i) < 1:
-            path_error = "file " + args.i + " does not exist.\n"
-            parser.error(path_error)
+        if not os.path.isfile(args.i):
+            parser.error(f"file {args.i} is not valid.\n")
     elif args.f:
-        if os.path.exists(args.f) < 1:
-            path_error = "folder " + args.f + " does not exist.\n"
-            parser.error(path_error)
+        if not os.path.isdir(args.f):
+            parser.error(f"folder {args.f} is not valid.\n")
     else:
         parser.error("Please provide either an input file (-i) or an input folder (-f)")
+
+    # check prodigal/protein flags
     if args.prod:
-        if args.prot: parser.error("Can only provide one of -prot or -prod option at a time")
+        if args.prot:
+            parser.error("Can only provide one of -prot or -prod option at a time")
         check_command('prodigal')
-    return [args,parser]
-
-
-def calculateKmerCount(cseq, kmer):
-    kmerlist = dict()
-    for i in range((len(cseq) - kmer) + 1):
-        k = cseq[i:i+kmer]
-        if k not in kmerlist:
-            kmerlist[k] = 0
-        kmerlist[k] += 1
-    return kmerlist
-
-
-def check_args(ipfile,args,def_option,m_parser):
+    return args
+def check_args(ipfile,args,def_option,m_parser): #TODO: Merge into parseargs()
     given_ext = (os.path.splitext(ipfile)[1]).strip()
     if def_option:
-        if given_ext not in protein_file_ext:
-            m_parser.error("Input file provided should be one of the following formats: " + str(protein_file_ext))
+        if given_ext not in FILE_EXT_PROTEIN:
+            m_parser.error("Input file provided should be one of the following formats: " + str(FILE_EXT_PROTEIN))
 
     if args.prod:
         # if not args.q and given_ext not in protein_file_ext:
-        if given_ext not in protein_file_ext:
-            m_parser.error("Input file provided should be one of the following formats: " + str(protein_file_ext))
-
+        if given_ext not in FILE_EXT_PROTEIN:
+            m_parser.error("Input file provided should be one of the following formats: " + str(FILE_EXT_PROTEIN))
     
     if args.prot:
         if given_ext != ".faa":
             m_parser.error("Input file provided should be in .faa format")
 
 
+## Main
+#
 def mercat_main():
-    __args__, m_parser = parseargs()
+    '''Main method'''
 
-    kmer = __args__.k
-    num_cores = __args__.n
+    # Process Arguments
+    __args__ = parseargs()
+    # Set Flags
+    m_kmer = __args__.k
+    m_num_cores = __args__.n
     m_inputfile = __args__.i
     m_inputfolder = __args__.f
-    prune_kmer = __args__.c
-    # mflag_fastq = __args__.q
-    mflag_prodigal = __args__.prod
-    # mflag_trimmomatic = __args__.t
-    mflag_protein = __args__.prot
-    mfile_size_split = __args__.s
-    kmerstring = str(kmer) + "-mers"
-    
-    if not mfile_size_split:
-        mfile_size_split = 100
+    m_min_count = __args__.c
+    m_flag_prodigal = __args__.prod
+    m_flag_protein = __args__.prot
+    m_chunk_size = __args__.s
+    m_kmerstring = f"{m_kmer}-mers"
+    m_outputfolder = __args__.o
+    os.makedirs(m_outputfolder, exist_ok=True)
 
-    if mflag_protein or mflag_prodigal:
-        np_string = "protein"
-    else:
-        np_string = "nucleotide"
-    # def_option =  not __args__.p and not __args__.q and not __args__.pro
-    def_option =  not __args__.prod and not __args__.prot
+    np_string = 'protein' if m_flag_protein or m_flag_prodigal else 'nucleotide' #TODO:Rename variable
 
+    # Load input files
     all_ipfiles = []
+    gc_content = dict()
+    files_nucleotide = {}
+    files_protein = {}
+    cleanpath = os.path.join(m_outputfolder, 'clean')
+    print("Loading files")
     if m_inputfolder:
         m_inputfolder = os.path.abspath(m_inputfolder)
-        os.chdir(m_inputfolder)
-        #Assume all have same ext
         for fname in os.listdir(m_inputfolder):
-            mip = os.path.join(m_inputfolder, fname)
-            if not os.path.isdir(mip):
+            file = os.path.join(m_inputfolder, fname)
+            if not os.path.isdir(file):
                 # skip directories
-                path_q, file_q = os.path.split(mip)
-                f_name, f_ext = os.path.splitext(file_q)
-                if f_ext == '.fastq':
-                    f_name = f_name.split('.')[0]
-                    # print(path_q+","+args.i)
-                    mip = mercat2_qc.fastq_processing(mip, path_q, f_name, file_q)
-                all_ipfiles.append(mip)
+                basename, f_ext = os.path.splitext(fname)
+                if f_ext in FILE_EXT_FASTQ:
+                    print("***FASTQ PROCESS***")
+                    file = mercat2_fasta.fastq_processing(file, cleanpath, basename)
+                    files_nucleotide[basename] = file
+                elif f_ext in FILE_EXT_NUCLEOTIDE:
+                    file,stat = mercat2_fasta.removeN(file, cleanpath)
+                    files_nucleotide[basename] = file
+                    gc_content[basename] = stat['GC Content']
+                elif f_ext in FILE_EXT_PROTEIN:
+                    files_protein[basename] = file
+                all_ipfiles.append(file)
     else:
-        m_inputfolder = os.path.dirname(os.path.abspath(m_inputfile))
+        basename, f_ext = os.path.splitext(m_inputfile)
+        if f_ext in FILE_EXT_FASTQ:
+            print("***FASTQ PROCESS***")
+            m_inputfile = mercat2_fasta.fastq_processing(m_inputfile, cleanpath, basename)
+            files_nucleotide[basename] = m_inputfile
+        elif f_ext in FILE_EXT_NUCLEOTIDE:
+            m_inputfile,stat = mercat2_fasta.removeN(m_inputfile, cleanpath)
+            files_nucleotide[basename] = m_inputfile
+            gc_content[basename] = stat['GC Content']
+        elif f_ext in FILE_EXT_PROTEIN:
+            files_protein[basename] = m_inputfile
+        all_ipfiles.append(m_inputfile)
         all_ipfiles.append(os.path.abspath(m_inputfile))
+
     
-    top10_all_samples = dict()
-    # print (len(all_ipfiles))
-    for m_inputfile in all_ipfiles:
-        # if arg
-        os.chdir(m_inputfolder)
-        check_args(m_inputfile, __args__, def_option,m_parser)
+    # ORF Call if -prod flag
+    if m_flag_prodigal:
+        print(f"Running prodigal on {len(files_nucleotide)} files")
+        prodpath = os.path.join(m_outputfolder, 'prodigal')
+        results = Parallel(n_jobs=m_num_cores)(
+            delayed(mercat2_fasta.orf_call)(basename, file, prodpath) for basename,file in files_nucleotide.items())
+        for res in results:
+            for name,file in res.items():
+                files_protein[name] = file
 
-        m_inputfile = os.path.abspath(m_inputfile)
-
-        sample_name = os.path.splitext(os.path.basename(m_inputfile))[0]
-        basename_ipfile = os.path.splitext(os.path.basename(m_inputfile))[0] + "_" + np_string
-
-        inputfile_size = os.stat(m_inputfile).st_size
-        dir_runs = "mercat_results/" + basename_ipfile + "_run"
-
-        if os.path.exists(dir_runs):
-            shutil.rmtree(dir_runs)
-        os.makedirs(dir_runs)
-
-        # Remove Ns
-        m_inputfile, n_stats = mercat2_qc.removeN(m_inputfile, dir_runs)
-
-        all_chunks_ipfile = []
-        is_chunked = False
-        if inputfile_size >= (mfile_size_split*1024*1024): #100MB
-            print("Large input file provided: Splitting it into smaller files...\n")
-            mercat2_Chunker.Chunker(m_inputfile, dir_runs, str(mfile_size_split)+"M", ">")
-            os.chdir(dir_runs)
-            all_chunks_ipfile = glob.glob("*")
-            is_chunked = True
-        else:
-            os.chdir(dir_runs)
-            all_chunks_ipfile.append(m_inputfile)
-
-        splitSummaryFiles = []
-
-        for inputfile in all_chunks_ipfile:
-
-            bif = os.path.splitext(os.path.basename(inputfile))[0] + "_" + np_string
-
-            "Run prodigal if specified"
-            '''prodigal -i test_amino-acid.fa -o output.gff -a output.orf_pro.faa  -f gff -p meta -d output.orf_nuc'''
-            if mflag_prodigal:
-                mflag_protein = True
-                gen_protein_file = bif+"_pro.faa"
-                prod_cmd = "prodigal -i %s -o %s -a %s -f gff -p meta -d %s" % (
-                inputfile, bif + ".gff", gen_protein_file, bif + "_nuc.ffn")
-                print(prod_cmd)
-                with open(os.devnull, 'w') as FNULL:
-                    subprocess.call(prod_cmd, stdout=FNULL, stderr=FNULL, shell=True)
-                inputfile = gen_protein_file
-
-            print(("Running mercat using " + str(num_cores) + " cores"))
-            print(("input file: " + inputfile))
-
-            start_time = timeit.default_timer()
-            sequences = OrderedDict()
-            is_fastq = False
-            with open(inputfile,'r') as f:
-                for line in f:
-                    if line.startswith(">"): break
-                    elif line.startswith("@"):
-                        is_fastq = True
-                        break
-            with open(inputfile,'r') as f:
-                if not is_fastq:
-                    seq = ""
-                    sname = ""
-                    for line in f:
-                        line = line.strip()
-                        if line.startswith(">"):
-                            if sname:
-                                sequences[sname] = ""
-                            if seq:
-                                sequences[sname] = seq
-                                seq = ""
-                            sname = line[1:]
-                            sname = sname.split("#",1)[0].strip()
-                        else:
-                            line = line.replace("*","")
-                            seq += line
-                    #assert sname and seq
-                    sequences[sname] = seq
-                else: #process fastq file
-                    seq = ""
-                    sname = ""
-                    for line in f:
-                        line = line.strip()
-                        if line.startswith("@"):
-                            sname = line[1:].split()[0]
-                        elif line.startswith("+"):
-                            if seq:
-                                sequences[sname] = seq
-                                seq = ""
-                        else:
-                            if sname not in sequences: seq = line
-
-            #print sequences.keys()[0] + "="+ sequences.values()[0]
-
-            print(("Number of sequences in " + inputfile + " = "+ str(humanize.intword(len(sequences)))))
-            
-            results = Parallel(n_jobs=num_cores)(
-                delayed(calculateKmerCount)(sequences[seq], kmer) for seq in sequences)
-
-            kmerlist = dict()
-            #kmerlist_all_seq = dict()
-
-            for d in results:
-                for k,v in list(d.items()):
-                    if k in kmerlist:
-                        kmerlist[k] += v
-                    else: kmerlist[k] = v
-
-            print(("Time to compute " + kmerstring +  ": " + str(round(timeit.default_timer() - start_time,2)) + " secs"))
-
-            significant_kmers = []
-            for k in kmerlist:
-                if kmerlist[k] >= prune_kmer:
-                    significant_kmers.append(k)
-
-            print(("Total number of " + kmerstring +  " found: " + str(humanize.intword(len(kmerlist)))))
-            print((kmerstring +  " with count >= " + str(prune_kmer) + ": " + str(humanize.intword(len(significant_kmers)))))
-
-            if mflag_protein:
-                df = pd.DataFrame(0.0, index=significant_kmers, columns=['Count',"PI","MW","Hydro"])
-                for k in significant_kmers:
-                    df.at[k,'Count'] = kmerlist[k]
-                    df.at[k,'PI'] = mercat2_metrics.predict_isoelectric_point_ProMoST(k)
-                    df.at[k,'MW'] = mercat2_metrics.calculate_MW(k)
-                    df.at[k,'Hydro'] = mercat2_metrics.calculate_hydro(k)
-            else:
-                df = pd.DataFrame(0, index=significant_kmers, columns=['Count',"GC_Percent","AT_Percent"])
-                for k in significant_kmers:
-                    c_kmer = k
-                    # df.set_value(k, 'Count', kmerlist[k])
-                    df.at[k,'Count'] = kmerlist[k]
-                    len_cseq = float(len(c_kmer))
-                    df.at[k,'GC_Percent'] = round(((c_kmer.count("G")+c_kmer.count("C")) / len_cseq) * 100.0)
-                    df.at[k,'AT_Percent'] = round(((c_kmer.count("A")+c_kmer.count("T")) / len_cseq) * 100.0)
-            df.to_csv(bif + "_summary.csv", index_label="k-mers", index=True)
-
-            splitSummaryFiles.append(bif + "_summary.csv")
-            print(("Total time: " + str(round(timeit.default_timer() - start_time,2)) + " secs"))
-
-        num_chunks = len(all_chunks_ipfile)
-        df = dd.read_csv(splitSummaryFiles)
-        dfgb = df.groupby("k-mers").sum()
-        df_top10 = dfgb.nlargest(10, 'Count').compute()
-        dfsum = dfgb.sum(0).compute()
-
-        dfgb.to_csv("./" + basename_ipfile + "_finalSummary*.csv", index_label=kmerstring, name_function=lambda name: str(name))
-
-        if mflag_protein:
-            df_top10[['PI', 'MW', 'Hydro']] = df_top10[['PI', 'MW', 'Hydro']] / num_chunks
-        else:
-            df_top10[['GC_Percent', 'AT_Percent']] = df_top10[['GC_Percent', 'AT_Percent']] / num_chunks
-
-        top10_all_samples[sample_name] = [df_top10, dfsum.Count]
-
-        all_counts = dfgb.Count.values.compute().astype(int)
-        mercat2_metrics.compute_alpha_beta_diversity(all_counts, basename_ipfile)
-
-        if is_chunked:
-            for tempfile in all_chunks_ipfile:
-                os.remove(tempfile)
-            for sf in splitSummaryFiles:
-                os.remove(sf)
-
-    plots_dir = os.path.join(m_inputfolder, "mercat_results", "plots")
-    if os.path.exists(plots_dir):
-        shutil.rmtree(plots_dir)
-    os.makedirs(plots_dir)
-    os.chdir(plots_dir)
-
+    # Begin processing files
     figPlots = dict()
     tsv_stats = dict()
+    os.makedirs(os.path.join(m_outputfolder, 'tsv'), exist_ok=True)
+
+    # Process Nucleotides
+    print("Processing Nucleotides")
+    df_list = dict()
+    for basename, file in files_nucleotide.items():
+        print(basename, file)
+        np_string = '_nucleotide'
+
+        # Split into chunks
+        file_size = os.stat(file).st_size
+        if file_size >= (m_chunk_size*1024*1024):
+            print("Large input file provided: Splitting it into smaller files...\n")
+            dir_chunks = os.path.join(m_outputfolder, "chunks", f"{basename}_{np_string}")
+            os.makedirs(dir_chunks, exist_ok=True)
+            all_chunks = mercat2_Chunker.Chunker(file, dir_chunks, str(m_chunk_size)+"M", ">").files
+        else:
+            all_chunks = [file]
+
+        # Run Mercat
+        print(("Running mercat using " + str(m_num_cores) + " cores"))
+        print(("input file: " + file))
+        for chunk in all_chunks:
+            df = mercat2_kmers.find_kmers(chunk, m_kmer, m_min_count, m_num_cores)
+            df_list[basename] = df
+            outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
+            df.to_csv(outfile, index_label="k-mers", index=True, sep='\t')
     # Stacked Bar Plots (top kmer counts)
-    if len(all_ipfiles) == 1:
-        sbname = os.path.basename(all_ipfiles[0])
-    else:
-        sbname = os.path.basename(m_inputfolder)
-    figPlots[sbname+'_k-mers'] = mercat2_report.stackedbar_plots(top10_all_samples, kmerstring)
+    if len(df_list):
+        figPlots["Combined Nucleotide kmer Summary"] = mercat2_report.kmer_summary(df_list)
+        if len(files_nucleotide) > 3:
+            dfPCA = pd.DataFrame()
+            for name,df in df_list.items():
+                dfTemp = df.rename(columns=dict(Count=name))
+                dfPCA = dfPCA.merge(dfTemp, left_index=True, right_index=True, how="outer")
+            dfPCA = dfPCA.reset_index().rename(columns=dict(index="k-mer"))
+            figPlots["Nucleotide PCA"] = [mercat2_report.PCA_plot(dfPCA)]
+        if m_kmer >= 10:
+            figPlots['k-mer GC Summary'] = [mercat2_report.GC_plot_kmer(df_list)]
+    if len(gc_content) > 0:
+        figPlots['Sample GC Summary'] = [mercat2_report.GC_plot_sample(gc_content)]
+    
+
+    # Process Proteins
+    print("Processing Proteins")
+    df_prot_stats = pd.DataFrame(columns=['sample', 'PI', 'MW', 'Hydro'])
+    df_list = dict()
+    for basename, file in files_protein.items():
+        print(basename, file)
+        np_string = '_protein'
+
+        if file_size >= (m_chunk_size*1024*1024):
+            print("Large input file provided: Splitting it into smaller files...\n")
+            dir_chunks = os.path.join(m_outputfolder, "chunks", f"{basename}_{np_string}")
+            os.makedirs(dir_chunks, exist_ok=True)
+            all_chunks = mercat2_Chunker.Chunker(file, dir_chunks, str(m_chunk_size)+"M", ">").files
+        else:
+            all_chunks = [file]
+
+        # Run Mercat
+        print(("Running mercat using " + str(m_num_cores) + " cores"))
+        print(("input file: " + file))
+        for chunk in all_chunks:
+            df = mercat2_kmers.find_kmers(chunk, m_kmer, m_min_count, m_num_cores)
+            df_list[basename] = df
+            outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
+            df.to_csv(outfile, index_label="k-mers", index=True, sep='\t')
+    # Stacked Bar Plots (top kmer counts)
+    if len(df_list):
+        figPlots["Combined Protein kmer Summary"] = mercat2_report.kmer_summary(df_list)
+        if len(files_protein) > 3:
+            dfPCA = pd.DataFrame()
+            for name,df in df_list.items():
+                df = df.rename(columns=dict(Count=name))
+                dfPCA = dfPCA.merge(df, left_index=True, right_index=True, how="outer")
+            dfPCA = dfPCA.reset_index().rename(columns=dict(index="k-mer"))
+            figPlots["Protein PCA"] = [mercat2_report.PCA_plot(dfPCA)]
+
+
+    # Plot Data
+    plots_dir = os.path.join(m_outputfolder, "plots")
+    os.makedirs(plots_dir, exist_ok=True)
+
+    mercat2_report.write_html(os.path.join(plots_dir, "report.html"), figPlots, tsv_stats)
+    return
+
 
     # PCA
     subdir = m_inputfolder+"/mercat_results/"
@@ -351,15 +262,19 @@ def mercat_main():
        figPlots['PCA'] = mercat2_report.PCA_plot(subdir)
 
     # Metastat Plots
-    for basename_ipfile in top10_all_samples:
-        df_top10,_ = top10_all_samples[basename_ipfile]
-        if mflag_protein:
-            figPlots[basename_ipfile+'_PI'] = mercat2_report.scatter_plots(basename_ipfile, 'PI', df_top10, kmerstring)
-            figPlots[basename_ipfile+'_MW'] = mercat2_report.scatter_plots(basename_ipfile, 'MW', df_top10, kmerstring)
-            figPlots[basename_ipfile+'_Hydro'] = mercat2_report.scatter_plots(basename_ipfile, 'Hydro', df_top10, kmerstring)
-        else:
-            figPlots[basename_ipfile+'_GC'] = mercat2_report.scatter_plots(basename_ipfile, 'GC_Percent', df_top10, kmerstring)
-            figPlots[basename_ipfile+'_AT'] = mercat2_report.scatter_plots(basename_ipfile, 'AT_Percent', df_top10, kmerstring)
+    if len(gc_content) > 0:
+        figPlots['Sample GC Summary'] = mercat2_report.GC_plot_sample(gc_content)
+
+    if m_flag_protein:
+        pass
+        #figPlots[basename_ipfile+'_PI'] = mercat2_report.scatter_plots(basename_ipfile, 'PI', top10_all_samples, kmerstring)
+        #figPlots[basename_ipfile+'_MW'] = mercat2_report.scatter_plots(basename_ipfile, 'MW', df_top10, kmerstring)
+        #figPlots[basename_ipfile+'_Hydro'] = mercat2_report.scatter_plots(basename_ipfile, 'Hydro', df_top10, kmerstring)
+    else:
+        if m_kmer >= 10:
+            figPlots['k-mer GC Summary'] = mercat2_report.GC_plot_kmer(df_list)
+        #figPlots[basename_ipfile+'_GC'] = mercat2_report.scatter_plots(basename_ipfile, 'GC_Percent', df_top10, kmerstring)
+        #figPlots[basename_ipfile+'_AT'] = mercat2_report.scatter_plots(basename_ipfile, 'AT_Percent', df_top10, kmerstring)
 
     # Save HTML Report
     mercat2_report.write_html(os.path.join(plots_dir, "report.html"), figPlots, tsv_stats)
