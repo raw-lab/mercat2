@@ -52,7 +52,6 @@ def parseargs():
     parser.add_argument('-c', type=int, default=10, help='minimum kmer count [default = 10]')  # minimum kmer count to report
     parser.add_argument('-prot', action='store_true', help='assume fasta files are protein input files')
     parser.add_argument('-prod', action='store_true', help='run prodigal on fasta file')
-    parser.add_argument('-frag', action='store_true', help='run FragGeneScan+ on fasta file')
     parser.add_argument('-s', type=int, default=100, required=False, help='Split into x MB files. Default = 100MB')
     parser.add_argument('-o', type=str, default='mercat_results', required=False, help="Output folder, default = 'mercat_results' in current directory")
 
@@ -77,20 +76,31 @@ def parseargs():
             parser.error("Can only provide one of -prot or -prod option at a time")
         check_command('prodigal')
     return args
-def check_args(ipfile,args,def_option,m_parser): #TODO: Merge into parseargs()
-    given_ext = (os.path.splitext(ipfile)[1]).strip()
-    if def_option:
-        if given_ext not in FILE_EXT_PROTEIN:
-            m_parser.error("Input file provided should be one of the following formats: " + str(FILE_EXT_PROTEIN))
 
-    if args.prod:
-        # if not args.q and given_ext not in protein_file_ext:
-        if given_ext not in FILE_EXT_PROTEIN:
-            m_parser.error("Input file provided should be one of the following formats: " + str(FILE_EXT_PROTEIN))
-    
-    if args.prot:
-        if given_ext != ".faa":
-            m_parser.error("Input file provided should be in .faa format")
+
+## Chunk Files
+#
+def chunk_files(name:str, file:str, chunk_size:int, outpath:str):
+    '''Checks if the given file is larger than chunk_size and splits the file as necessary.
+    Fasta files are split at sequence headers to keep individual sequences contiguous.
+
+    Parameters:
+        name (str): The name of the sample file for proper grouping of the files.
+        file (str): Path to a fasta.
+        chunk_size (int): The size, in MB, to split the files at.
+        outpath (str): Path to a folder to save the chunked files in. Folder should not exist.
+
+    Returns:
+        tuple: A tuple with the name, and list of paths to the chunked files.
+    '''
+
+    if os.stat(file).st_size >= (chunk_size*1024*1024):
+        print("Large input file provided: Splitting it into smaller files...\n")
+        os.makedirs(outpath, exist_ok=True)
+        all_chunks = mercat2_Chunker.Chunker(file, outpath, str(chunk_size)+"M", ">").files
+    else:
+        all_chunks = [file]
+    return (name, all_chunks)
 
 
 ## Main
@@ -109,8 +119,10 @@ def mercat_main():
     m_flag_prodigal = __args__.prod
     m_flag_protein = __args__.prot
     m_chunk_size = __args__.s
-    m_kmerstring = f"{m_kmer}-mers"
     m_outputfolder = __args__.o
+    
+    if os.path.exists(m_outputfolder) and os.path.isdir(m_outputfolder):
+        shutil.rmtree(m_outputfolder)
     os.makedirs(m_outputfolder, exist_ok=True)
 
     np_string = 'protein' if m_flag_protein or m_flag_prodigal else 'nucleotide' #TODO:Rename variable
@@ -163,8 +175,23 @@ def mercat_main():
         results = Parallel(n_jobs=m_num_cores)(
             delayed(mercat2_fasta.orf_call)(basename, file, prodpath) for basename,file in files_nucleotide.items())
         for res in results:
-            for name,file in res.items():
-                files_protein[name] = file
+            files_protein[res[0]] = res[1]
+
+    # Chunk large files
+    print("Checking for large files")
+    dir_chunks = os.path.join(m_outputfolder, "chunks")
+    # nucleotides
+    results = Parallel(n_jobs=m_num_cores)(delayed(chunk_files)
+        (basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_nucleotide"))
+        for basename,file in files_nucleotide.items())
+    for res in results:
+        files_nucleotide[res[0]] = res[1]
+    # proteins
+    results = Parallel(n_jobs=m_num_cores)(delayed(chunk_files)
+        (basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_protein"))
+        for basename,file in files_protein.items())
+    for res in results:
+        files_protein[res[0]] = res[1]
 
     # Begin processing files
     figPlots = dict()
@@ -174,28 +201,24 @@ def mercat_main():
     # Process Nucleotides
     print("Processing Nucleotides")
     df_list = dict()
-    for basename, file in files_nucleotide.items():
-        print(basename, file)
+    for basename,files in files_nucleotide.items():
         np_string = '_nucleotide'
 
-        # Split into chunks
-        file_size = os.stat(file).st_size
-        if file_size >= (m_chunk_size*1024*1024):
-            print("Large input file provided: Splitting it into smaller files...\n")
-            dir_chunks = os.path.join(m_outputfolder, "chunks", f"{basename}_{np_string}")
-            os.makedirs(dir_chunks, exist_ok=True)
-            all_chunks = mercat2_Chunker.Chunker(file, dir_chunks, str(m_chunk_size)+"M", ">").files
-        else:
-            all_chunks = [file]
-
         # Run Mercat
-        print(("Running mercat using " + str(m_num_cores) + " cores"))
-        print(("input file: " + file))
-        for chunk in all_chunks:
-            df = mercat2_kmers.find_kmers(chunk, m_kmer, m_min_count, m_num_cores)
-            df_list[basename] = df
-            outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
-            df.to_csv(outfile, index_label="k-mers", index=True, sep='\t')
+        print(f"Running mercat using {m_num_cores} cores on {basename}{np_string}")
+        kmers = dict()
+        for file in files:
+            data = mercat2_kmers.find_kmers(file, m_kmer, m_min_count, m_num_cores)
+            for k,v in data.items():
+                if k in kmers:
+                    kmers[k] += v
+                else:
+                    kmers[k] = v
+        df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
+        outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
+        dfGC = df_list[basename].reset_index().rename(columns=dict(index='k-mer'))
+        dfGC['GC%'] = dfGC['k-mer'].apply(lambda k: round(100.0 * (k.count('G') + k.count('C')) / len(k), 2))
+        dfGC.to_csv(outfile, index=False, sep='\t')
     # Stacked Bar Plots (top kmer counts)
     if len(df_list):
         figPlots["Combined Nucleotide kmer Summary"] = mercat2_report.kmer_summary(df_list)
@@ -214,28 +237,28 @@ def mercat_main():
 
     # Process Proteins
     print("Processing Proteins")
-    df_prot_stats = pd.DataFrame(columns=['sample', 'PI', 'MW', 'Hydro'])
     df_list = dict()
-    for basename, file in files_protein.items():
-        print(basename, file)
+    for basename,files in files_protein.items():
         np_string = '_protein'
 
-        if file_size >= (m_chunk_size*1024*1024):
-            print("Large input file provided: Splitting it into smaller files...\n")
-            dir_chunks = os.path.join(m_outputfolder, "chunks", f"{basename}_{np_string}")
-            os.makedirs(dir_chunks, exist_ok=True)
-            all_chunks = mercat2_Chunker.Chunker(file, dir_chunks, str(m_chunk_size)+"M", ">").files
-        else:
-            all_chunks = [file]
-
         # Run Mercat
-        print(("Running mercat using " + str(m_num_cores) + " cores"))
-        print(("input file: " + file))
-        for chunk in all_chunks:
-            df = mercat2_kmers.find_kmers(chunk, m_kmer, m_min_count, m_num_cores)
-            df_list[basename] = df
-            outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
-            df.to_csv(outfile, index_label="k-mers", index=True, sep='\t')
+        print(f"Running mercat using {m_num_cores} cores on {basename}{np_string}")
+        kmers = dict()
+        for file in files:
+            data = mercat2_kmers.find_kmers(file, m_kmer, m_min_count, m_num_cores)
+            for k,v in data.items():
+                if k in kmers:
+                    kmers[k] += v
+                else:
+                    kmers[k] = v
+        df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
+        outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
+        dfMetrics = df_list[basename].reset_index().rename(columns=dict(index='k-mer'))
+        dfMetrics['PI'] = dfMetrics['k-mer'].apply(lambda k: mercat2_metrics.predict_isoelectric_point_ProMoST(k))
+        dfMetrics['MW'] = dfMetrics['k-mer'].apply(lambda k: mercat2_metrics.calculate_MW(k))
+        dfMetrics['Hydro'] = dfMetrics['k-mer'].apply(lambda k: mercat2_metrics.calculate_hydro(k))
+        dfMetrics.to_csv(outfile, index=False, sep='\t')
+
     # Stacked Bar Plots (top kmer counts)
     if len(df_list):
         figPlots["Combined Protein kmer Summary"] = mercat2_report.kmer_summary(df_list)
@@ -246,8 +269,8 @@ def mercat_main():
                 dfPCA = dfPCA.merge(df, left_index=True, right_index=True, how="outer")
             dfPCA = dfPCA.reset_index().rename(columns=dict(index="k-mer"))
             figPlots["Protein PCA"] = [mercat2_report.PCA_plot(dfPCA)]
-
-
+    
+    
     # Plot Data
     plots_dir = os.path.join(m_outputfolder, "plots")
     os.makedirs(plots_dir, exist_ok=True)
@@ -256,30 +279,6 @@ def mercat_main():
     return
 
 
-    # PCA
-    subdir = m_inputfolder+"/mercat_results/"
-    if len(all_ipfiles) >= 4:
-       figPlots['PCA'] = mercat2_report.PCA_plot(subdir)
-
-    # Metastat Plots
-    if len(gc_content) > 0:
-        figPlots['Sample GC Summary'] = mercat2_report.GC_plot_sample(gc_content)
-
-    if m_flag_protein:
-        pass
-        #figPlots[basename_ipfile+'_PI'] = mercat2_report.scatter_plots(basename_ipfile, 'PI', top10_all_samples, kmerstring)
-        #figPlots[basename_ipfile+'_MW'] = mercat2_report.scatter_plots(basename_ipfile, 'MW', df_top10, kmerstring)
-        #figPlots[basename_ipfile+'_Hydro'] = mercat2_report.scatter_plots(basename_ipfile, 'Hydro', df_top10, kmerstring)
-    else:
-        if m_kmer >= 10:
-            figPlots['k-mer GC Summary'] = mercat2_report.GC_plot_kmer(df_list)
-        #figPlots[basename_ipfile+'_GC'] = mercat2_report.scatter_plots(basename_ipfile, 'GC_Percent', df_top10, kmerstring)
-        #figPlots[basename_ipfile+'_AT'] = mercat2_report.scatter_plots(basename_ipfile, 'AT_Percent', df_top10, kmerstring)
-
-    # Save HTML Report
-    mercat2_report.write_html(os.path.join(plots_dir, "report.html"), figPlots, tsv_stats)
-    return 0
-
-
+# If main app
 if __name__ == "__main__":
     mercat_main()

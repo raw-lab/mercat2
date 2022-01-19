@@ -1,10 +1,8 @@
-import os
 import base64
 import pkg_resources as pkg
 import time
 import numpy as np
 import pandas as pd
-import itertools
 import plotly.graph_objs as go
 import matplotlib.pyplot as plt
 import plotly.express as px
@@ -28,7 +26,16 @@ PLOTLY_SOURCE = 'cdn'
 
 
 # k-mer summary
-def kmer_summary(df_all_samples):
+def kmer_summary(df_all_samples: dict):
+    '''Creates a plotly bar graph with the k-mer counts of the top 2 k-mers among all samples.
+
+    Parameters:
+        df_all_samples (dict[name: Dataframe]): A dictionary with the Dataframes of samples containing the counts of k-mers.
+
+    Returns:
+        tuple: A tuple with two plotly figures: a barplot of the top k-mers and a plotly table figure labeling the k-mers.
+    '''
+
     df_list = []
     for name,value in df_all_samples.items():
         df_list.append(value['Count'].rename(name))
@@ -57,11 +64,20 @@ def kmer_summary(df_all_samples):
         ))
     )
     figTable.update_layout(height=100)
-    return [fig, figTable]
+    return (fig, figTable)
 
 
 # GC Plot kmers
-def GC_plot_kmer(df_all_samples):
+def GC_plot_kmer(df_all_samples:dict):
+    '''Creates a plotly bar graph with the GC content of k-mers.
+
+    Parameters:
+        df_all_samples (dict[name: Dataframe]): A dictionary with the Dataframes of samples containing the counts of k-mers.
+
+    Returns:
+        plotly fig: A plotly barplot figure of the GC% Content of the top k-mers.
+    '''
+
     #print("\nGC PLOT\n")
     df_list = []
     for name,value in df_all_samples.items():
@@ -82,27 +98,31 @@ def GC_plot_kmer(df_all_samples):
 
 # GC Plot samples
 def GC_plot_sample(gc_content: dict):
-    print(gc_content)
+    '''Creates a plotly bar graph of the GC content.
+
+    Parameters:
+        gc_content (dict[str: float]): A dictionary with GC content data.
+
+    Returns:
+        plotly fig: A plotly barplot figure of the GC% Content from the gc_content dictionary.
+    '''
+
     df = pd.DataFrame.from_dict(data=gc_content, orient='index', columns=['GC Content'])
-    fig = px.bar(df)
-    return fig
-
-
-# Plot Protein Metrics samples
-def Metric_plot_samples(kmer_list):
-    df = pd.DataFrame(0.0, index=kmer_list, columns=['Count',"PI","MW","Hydro"])
-    for k in kmer_list:
-        df.at[k,'Count'] = k
-        df.at[k,'PI'] = mercat2_metrics.predict_isoelectric_point_ProMoST(k)
-        df.at[k,'MW'] = mercat2_metrics.calculate_MW(k)
-        df.at[k,'Hydro'] = mercat2_metrics.calculate_hydro(k)
-    print(df)
     fig = px.bar(df)
     return fig
 
 
 # PCA
 def PCA_plot(dfPCA):
+    '''Creates a 3D plotly scatter plot of the PCA of the given Dataframe.
+
+    Parameters:
+        dfPCA (Dataframe): A pandas dataframe with samples and kmer counts
+
+    Returns:
+        plotly fig: A plotly 3D scatter plot of the PCA of the dataframe.
+    '''
+
     df_merged2 = dfPCA
     result = df_merged2.replace(np.nan, 0)
     pivoted = result.T
@@ -156,7 +176,18 @@ def PCA_plot(dfPCA):
 
 
 # Write HTML Report
-def write_html(outfile, figPlots, tsv_stats):
+def write_html(outfile:str, figPlots:dict, tsv_stats:dict):
+    '''Creates an html report with the figures and tsv files.
+
+    Parameters:
+        outfile (str): A path to the html file to save the report.
+        figPlots (dict): A dictionary of plotly figures.
+        tsv_stats (dict): A dictionary of paths to TSV files to add to the downloads section.
+
+    Returns:
+        None
+    '''
+
     # WRITE TO FORMATED HTML
     with dominate.document(title='K-Mer Report') as doc:
         # Header
