@@ -63,7 +63,7 @@ If you are publishing results obtained using MerCat2, please cite:
 CONTACT
 -------
 
-Please send all queries to Mounika Ramapuram Naik &nbsp;&nbsp;      <a href="mailto:mramapur@uncc.edu?"><img src="doc/gmail.png" style="width:25px;height:25px"/>    </a> &nbsp; &nbsp;  <br /> 
+Please send all queries to Jose Louis Figueroa III &nbsp;&nbsp;      <a href="mailto:jlfiguer@uncc.edu?"><img src="doc/gmail.png" style="width:25px;height:25px"/>    </a> &nbsp; &nbsp;  <br /> 
 Dr. Richard Allen White III &nbsp;&nbsp;   <a href="mailto:rwhit101@uncc.edu?"><img src="doc/gmail.png" style="width:25px;height:25px"/>      </a>
  <br />
 Or [open an issue](https://github.com/raw-lab/mercat2/issues).
