@@ -12,7 +12,7 @@ conda install -c bioconda mercat2
 
 ## Source Installer
 
-- Clone mercat2 from https://github.com/raw-lab/mercat2
+- Clone mercat2 from github
 
 ```bash
 git clone https://github.com/raw-lab/mercat2.git
@@ -93,8 +93,6 @@ If you are publishing results obtained using MerCat2, please cite:
 
 ### CONTACT
 
-The informatics point-of-contact for this project is [Dr. Richard Allen White III](https://github.com/raw-lab).  
-If you have any questions or feedback, please feel free to get in touch by email.  
-Dr. Richard Allen White III - rwhit101@uncc.edu or raw937@gmail.com.  
-Jose Figueroa - jlfiguer@uncc.edu  
-Or [open an issue](https://github.com/raw-lab/mercat2/issues).  
+Please send all queries to Jose Luis Figueroa III [jlfiguer@uncc.edu](mailto:jlfiguer@uncc.edu)  
+Dr. Richard Allen White III [rwhit101@uncc.edu](mailto:rwhit101@uncc.edu)  
+Or [open an issue](https://github.com/raw-lab/mercat2/issues)
