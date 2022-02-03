@@ -1,7 +1,9 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-"""mercat2.py: Python code for Parallel k-mer counting."""
+"""mercat2-pipeline.py: Python code for Parallel k-mer counting."""
 
+__version__     = "0.1"
 __author__      = "Jose L. Figueroa III, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
@@ -22,9 +24,9 @@ from mercat2 import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_repo
 
 
 # GLOBAL VARIABLES
-FILE_EXT_FASTQ = ['.fastq', '.fastq.gz']
-FILE_EXT_NUCLEOTIDE = [".fasta", ".fa", ".fna", ".ffn", ".fasta.gz", ".fa.gz", ".fna.gz", ".ffn.gz"]
-FILE_EXT_PROTEIN = [".faa", ".faa.gz"]
+FILE_EXT_FASTQ = ['.fastq']
+FILE_EXT_NUCLEOTIDE = [".fasta", ".fa", ".fna", ".ffn"]
+FILE_EXT_PROTEIN = [".faa"]
 
 
 ## Check Command
@@ -142,7 +144,8 @@ def mercat_main():
                 # skip directories
                 basename, f_ext = os.path.splitext(fname)
                 if f_ext in FILE_EXT_FASTQ:
-                    print("***FASTQ PROCESS***")
+                    check_command('fastqc')
+                    check_command('fastp')
                     file = mercat2_fasta.fastq_processing(file, cleanpath, basename)
                     files_nucleotide[basename] = file
                 elif f_ext in FILE_EXT_NUCLEOTIDE:
@@ -155,7 +158,8 @@ def mercat_main():
     else:
         basename, f_ext = os.path.splitext(m_inputfile)
         if f_ext in FILE_EXT_FASTQ:
-            print("***FASTQ PROCESS***")
+            check_command('fastqc')
+            check_command('fastp')
             m_inputfile = mercat2_fasta.fastq_processing(m_inputfile, cleanpath, basename)
             files_nucleotide[basename] = m_inputfile
         elif f_ext in FILE_EXT_NUCLEOTIDE:
@@ -228,11 +232,11 @@ def mercat_main():
                 dfTemp = df.rename(columns=dict(Count=name))
                 dfPCA = dfPCA.merge(dfTemp, left_index=True, right_index=True, how="outer")
             dfPCA = dfPCA.reset_index().rename(columns=dict(index="k-mer"))
-            figPlots["Nucleotide PCA"] = [mercat2_report.PCA_plot(dfPCA)]
+            figPlots["Nucleotide PCA"] = mercat2_report.PCA_plot(dfPCA)
         if m_kmer >= 10:
-            figPlots['k-mer GC Summary'] = [mercat2_report.GC_plot_kmer(df_list)]
+            figPlots['k-mer GC Summary'] = mercat2_report.GC_plot_kmer(df_list)
     if len(gc_content) > 0:
-        figPlots['Sample GC Summary'] = [mercat2_report.GC_plot_sample(gc_content)]
+        figPlots['Sample GC Summary'] = mercat2_report.GC_plot_sample(gc_content)
     
 
     # Process Proteins
@@ -253,12 +257,7 @@ def mercat_main():
                     kmers[k] = v
         df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
         outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
-        dfMetrics = df_list[basename].reset_index().rename(columns=dict(index='k-mer'))
-        dfMetrics['PI'] = dfMetrics['k-mer'].apply(lambda k: mercat2_metrics.predict_isoelectric_point_ProMoST(k))
-        dfMetrics['MW'] = dfMetrics['k-mer'].apply(lambda k: mercat2_metrics.calculate_MW(k))
-        dfMetrics['Hydro'] = dfMetrics['k-mer'].apply(lambda k: mercat2_metrics.calculate_hydro(k))
-        dfMetrics.to_csv(outfile, index=False, sep='\t')
-
+        df_list[basename].to_csv(outfile, index=False, sep='\t')
     # Stacked Bar Plots (top kmer counts)
     if len(df_list):
         figPlots["Combined Protein kmer Summary"] = mercat2_report.kmer_summary(df_list)
@@ -268,7 +267,9 @@ def mercat_main():
                 df = df.rename(columns=dict(Count=name))
                 dfPCA = dfPCA.merge(df, left_index=True, right_index=True, how="outer")
             dfPCA = dfPCA.reset_index().rename(columns=dict(index="k-mer"))
-            figPlots["Protein PCA"] = [mercat2_report.PCA_plot(dfPCA)]
+            figPlots["Protein PCA"] = mercat2_report.PCA_plot(dfPCA)
+    if len(files_protein):
+        figPlots["Sample Protein Metrics Summary"],tsv_stats["Protein_Metrics"] = mercat2_report.plot_sample_metrics(files_protein)
     
     
     # Plot Data

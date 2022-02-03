@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""mercat2_report.py: Module for creating tables, figures, and html reports
+"""
+
 import base64
 import pkg_resources as pkg
 import time
@@ -36,6 +40,8 @@ def kmer_summary(df_all_samples: dict):
         tuple: A tuple with two plotly figures: a barplot of the top k-mers and a plotly table figure labeling the k-mers.
     '''
 
+    numKmers = 5
+
     df_list = []
     for name,value in df_all_samples.items():
         df_list.append(value['Count'].rename(name))
@@ -43,28 +49,25 @@ def kmer_summary(df_all_samples: dict):
     df_merged['Total'] = df_merged.sum(axis=1)
     df_merged['Mean'] = df_merged[[s.name for s in df_list]].mean(axis='columns')
     df_merged.sort_values(by='Mean', axis='index', ascending=False, inplace=True)
-    df = df_merged.iloc[0:2][[s.name for s in df_list]].T.reset_index().rename(columns=dict(index='sample'))
+    df = df_merged.iloc[0:numKmers][[s.name for s in df_list]].T.reset_index().rename(columns=dict(index='sample'))
     df = df.melt(id_vars=['sample'], var_name='k-mer', value_name='count').sort_values(by='count', ascending=False)
     df['label'] = pd.Categorical(df['k-mer']).codes + 1
     df['label'] = df['label'].apply(lambda x: f'kmer-{x}')
     
-    fig = px.bar(df, x='sample', y='count', text='count', color='sample', facet_row='label')
+    fig = px.bar(df, x='sample', y='count', text='count', color='sample', facet_row='label', template="plotly_white")
     fig.for_each_annotation(lambda a: a.update(text=a.text.replace('label=', '')))
+    fig.update_layout(font=dict(color="Black"))
     
     df = df[['k-mer', 'label']].drop_duplicates()
 
     # Add table to label kmers
     figTable = go.Figure(
         data=[go.Table(cells=dict(values=[df['label'].tolist(), df['k-mer'].tolist()]))],
-        layout=go.Layout(margin=go.layout.Margin(
-            l=0, #left margin
-            r=0, #right margin
-            b=0, #bottom margin
-            t=0, #top margin
+        layout=go.Layout(margin=go.layout.Margin(l=0, r=0, b=0, t=0,
         ))
     )
-    figTable.update_layout(height=100)
-    return (fig, figTable)
+    figTable.update_layout(height=100, font=dict(color="Black"), template='plotly_white')
+    return [fig, figTable]
 
 
 # GC Plot kmers
@@ -92,7 +95,8 @@ def GC_plot_kmer(df_all_samples:dict):
         return 100.0 * (kmer.count('G') + kmer.count('C')) / len(kmer)
     df = pd.concat([df, df.apply(calc_gc)], axis=1, keys=['k-mer', 'GC'])
     #print("GC CONTENT\n", df)
-    fig = px.bar(df, x='k-mer', y='GC', text='GC')
+    fig = px.bar(df, x='k-mer', y='GC', text='GC', template="plotly_white")
+    fig.update_layout(font=dict(color="Black"))
     return fig
 
 
@@ -108,8 +112,67 @@ def GC_plot_sample(gc_content: dict):
     '''
 
     df = pd.DataFrame.from_dict(data=gc_content, orient='index', columns=['GC Content'])
-    fig = px.bar(df)
+    fig = px.bar(df, template="plotly_white")
+    fig.update_layout(font=dict(color="Black"))
     return fig
+
+
+# Protein Metrics Plot samples
+def plot_sample_metrics(protein_samples: dict):
+    '''Creates a plotly bar graph of the protein metrics.
+
+    Parameters:
+        protein_list (dict[str: list[str]]): A dictionary with lists of sequence files
+
+    Returns:
+        plotly fig: A plotly barplot figure of the protein metrics from the samples dictionary.
+    '''
+
+    dfMetrics = pd.DataFrame()
+    for basename,files in protein_samples.items():
+        prot_count = 0
+        prot_PI = 0.0
+        prot_MW = 0.0
+        prot_Hydro = 0.0
+        for file in files:
+            with open(file) as reader:
+                line = reader.readline()
+                while line:
+                    line = line.strip()
+                    line = line.rstrip('*')
+                    if line.startswith('>'):
+                        name = line[1:]
+                        sequence = ""
+                        line = reader.readline()
+                        while line:
+                            line = line.strip()
+                            line = line.rstrip('*')
+                            if line.startswith('>'):
+                                break
+                            sequence += line
+                            line = reader.readline()
+                        prot_count += 1
+                        prot_PI = mercat2_metrics.predict_isoelectric_point_ProMoST(sequence)
+                        prot_MW = mercat2_metrics.calculate_MW(sequence)
+                        prot_Hydro = mercat2_metrics.calculate_hydro(sequence)
+                        continue #already got next line, next item in loop
+                    line = reader.readline()
+        dfMetrics.at[basename, 'PI Avg'] = prot_PI / prot_count
+        dfMetrics.at[basename, 'MW Avg'] = prot_MW / prot_count
+        dfMetrics.at[basename, 'Hydro Avg'] = prot_Hydro / prot_count
+
+    figPI = px.bar(dfMetrics, x=dfMetrics.index, y='PI Avg', template="plotly_white",
+        labels={'index':'Sample', 'PI Avg':'PI Average'})
+    figPI.update_layout(font=dict(color="Black"))
+    
+    figMW = px.bar(dfMetrics, x=dfMetrics.index, y='MW Avg', template="plotly_white",
+        labels={'index':'Sample', 'MW Avg':'MW Average'})
+    figMW.update_layout(font=dict(color="Black"))
+    
+    figHydro = px.bar(dfMetrics, x=dfMetrics.index, y='Hydro Avg', template="plotly_white",
+        labels={'index':'Sample', 'Hydro Avg':'Hydropathy Average'})
+    figHydro.update_layout(font=dict(color="Black"))
+    return ([figPI, figMW, figHydro], dfMetrics)
 
 
 # PCA
@@ -136,42 +199,13 @@ def PCA_plot(dfPCA):
     }
     figPCA = px.scatter_3d(
         X_train, x=0, y=1, z=2, color=res1.index,
-        labels=labels
+        labels=labels,
+        template="plotly_white"
     )
-    figPCA.update_layout({
-    'plot_bgcolor' : '#7f7f7f',
-    'paper_bgcolor': '#FFFFFF',
-    'paper_bgcolor': "rgba(0,0,0,0)",
-    'plot_bgcolor' : '#7f7f7f',
+    figPCA.update_layout(font=dict(color="Black"),
+        margin=dict(l=0, r=0, t=0, b=0),
+        )
     
-    })
-    figPCA.update_layout(scene = dict(
-                        xaxis = dict(
-                            backgroundcolor="rgb(255,255, 255)",
-                            gridcolor="black",
-                            showbackground=True,
-                            zerolinecolor="black",),
-                        yaxis = dict(
-                            backgroundcolor="rgb(255,255, 255)",
-                            gridcolor="black",
-                            showbackground=True,
-                            zerolinecolor="black"),
-                        zaxis = dict(
-                            backgroundcolor="rgb(255,255, 255)",
-                            gridcolor="black",
-                            showbackground=True,
-                            zerolinecolor="black",),),
-                    
-                    )
-    
-    pca1 = PCA(n_components=5,svd_solver='randomized')
-    X_train = pca1.fit_transform(res1)
-    per_var = np.round(pca1.explained_variance_ratio_*100, decimals=1)
-    labels = ['PC'+str(i) for i in range(1,len(per_var)+1)]
-    fig = plt.bar(range(1,len(per_var)+1), per_var, tick_label=labels)
-    plt.xlabel('Principal Components',fontsize=15)
-    plt.ylabel('Variance %',fontsize=15)
-    #plt.savefig(subdir+'/'+'plots'+'/'+'PCA_plot_ScreePlot'+".png")
     return figPCA
 
 
@@ -215,8 +249,11 @@ def write_html(outfile:str, figPlots:dict, tsv_stats:dict):
             with div(h1("Summary"), cls="section", id="summary"):
                 for key,figures in figPlots.items():
                     with div(h2(f"{key}"), cls="section", id=f"{key}"):
-                        for fig in figures:
-                            raw(fig.to_html(full_html=False, include_plotlyjs=PLOTLY_SOURCE))
+                        if type(figures) is list:
+                            for fig in figures:
+                                raw(fig.to_html(full_html=False, include_plotlyjs=PLOTLY_SOURCE))
+                        else:
+                            raw(figures.to_html(full_html=False, include_plotlyjs=PLOTLY_SOURCE))
             # Downloads at the bottom
             with div(cls="section", id="downloads"):
                 h1("Downloads")

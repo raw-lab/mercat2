@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""mercat2_Chunker.py: Class for splitting fasta and fastq files into smaller chunks
+Takes sequence delimiters into account (i.e. '>', '@')
+"""
+
 import os
 import argparse
 import glob

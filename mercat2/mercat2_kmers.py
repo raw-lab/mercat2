@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+"""mercat2_kmers.py: Module for calculating k-mer counts
+"""
 
 import humanize
 import timeit

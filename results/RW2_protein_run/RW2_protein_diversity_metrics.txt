@@ -1,9 +1,0 @@
-shannon = 12.242432883484607
-simpson = 0.9997154710390842
-simpson_e = 0.476488709176816
-goods_coverage = 1.0
-fisher_alpha = 1074.1862446051437
-dominance = 0.0002845289609158104
-chao1 = 7376.0
-chao1_ci = (7376, 7376.0)
-ace = 7376.0

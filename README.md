@@ -1,70 +1,100 @@
-MerCat2: python code for versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis
-================================================
+# MerCat2: python code for versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis
 
 ![GitHub Logo](doc/mercat_workflow.jpg)
 
-  
-**Installing MerCat2:** 
- - Available via Anaconda: Enable BioConda repo and run `conda install mercat2`  <br/>
+## Installing MerCat2
 
-**Source Installer**
- - Download mercat_setup.py from bin  <br/>
- - Run python mercat_setup.py to install all required dependencies  <br/>
- - Go to downloaded mercat2 folder and run commands <br/>
+- Available via Anaconda: Enable BioConda repo and run `conda install mercat2`
 
-**Usage** <br/>
- - -i I path-to-input-file <br/>
- - -f F path-to-folder-containing-input-files <br/>
- - -k K kmer length<br/>
- - -n N no of cores [default = all]<br/>
- - -c C minimum kmer count [default = 10]<br/>
- - -pro run mercat on protein input file specified as .faa<br/>
- - -p run prodigal on nucleotide assembled contigs. 
-    - Must be one of ['.fa', '.fna', '.ffn', '.fasta','fastq']<br/>
- - -h, --help show this help message<br/>
+```bash
+conda install -c bioconda mercat2
+```
 
-By default mercat assumes that inputs provided is nucleotide mode of ['.fa', '.fna', '.ffn', '.fasta'] <br/>
+## Source Installer
 
-**Usage examples**
+- Clone mercat2 from https://github.com/raw-lab/mercat2
 
-****Run mercat2 on a protein mode (protein fasta - '.faa')****</br>
-`python mercat2.py -i file-name.faa -k 3 -n 8 -c 10 -pro`</br>
+```bash
+git clone https://github.com/raw-lab/mercat2.git
+```
 
-****Run mercat2 on a nucleotide mode (nucleotide fasta - '.fa', '.fna', '.ffn', '.fasta')****</br>
-`python mercat2.py -i file-name.fna -k 3 -n 8 -c 10 -p` </br>
+- Run install_mercat2.py to install all required dependencies
 
-****Run mercat2 on a nucleotide mode raw data (nucleotide fastq - '.fastq')****</br>
-`python mercat2.py -i file-name.fastq -k 3 -n 8 -c 10 -p` </br>
+## Usage
 
-****Run on many samples within a folder****</br>
-`python mercat2.py -f /path/to/input-folder -k 3 -n 8 -c 10`</br>
+- -i I path to input file
+- -f F path to folder containing input files
+- -k K k-mer length
+- -n N no of cores [default = all]
+- -c C minimum k-mer count [default = 10]
+- -prot assume .fasta files are in protein mode
+- -prod run prodigal on nucleotide assembled contigs
+  - Must be one of ['.fa', '.fna', '.ffn', '.fasta', 'fastq']
+- -s S split files into chunks of S size, in MB (default is 100MB)
+- -o output folder (default is 'mercat_results' in the current working directory)
+- -h, --help show this help message
 
-**Outputs**
-- Results are stored in input-file-name_{protein|nucleotide}.csv and input-file-name_{protein|nucleotide}_summary.csv </br>
-   -  file-name_protein.csv and file-name_protein_summary.csv (for example) </br>
-- file-name_protein.csv (If run in protein mode)</br>
-   -  Contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for individual sequences.</br>
-- file-name_protein_summary.csv (If run in nucleotide mode)</br>
-   -  Contains kmer frequency count, pI, Molecular Weight, and Hydrophobicity metrics for individual sequences.</br>
-- file-name_diversity_metrics.txt </br>
-   -  Contains the alpha diversity metrics.</br>
-- If 5 samples or more it will generate a PCA </br>
-   -  PCA analysis for all the samples is plotted in PCA_plot.html.</br>
+Mercat assumes the input file format based on the extension provided
 
-PCA analysis result for 5 sample files in data:
+- raw fastq file: ['.fastq']
+- nucleotide fasta: ['.fa', '.fna', '.ffn', '.fasta']
+- amino acid fasta: ['.faa']
 
- ![GitHub Logo](doc/PCA.png)
-  
-Citing Mercat
--------------
+## Usage examples
+
+### Run mercat2 on a protein file (protein fasta - '.faa')
+
+```bash
+mercat2-pipeline.py -i file-name.faa -k 3 -c 10
+```
+
+### Run mercat2 on a nucleotide file (nucleotide fasta - '.fa', '.fna', '.ffn', '.fasta')
+
+```bash
+mercat2-pipeline.py -i file-name.fna -k 3 -n 8 -c 10
+```
+
+### Run mercat2 on a nucleotide file raw data (nucleotide fastq - '.fastq')
+
+```bash
+mercat2-pipeline.py -i file-name.fastq -k 3 -n 8 -c 10
+```
+
+### Run on many samples within a folder
+
+```bash
+mercat2-pipeline.py -f /path/to/input-folder -k 3 -n 8 -c 10
+```
+
+### Run on sample with prodigal option (raw reads or nucleotide contigs - '.fa', '.fna', '.ffn', '.fasta', '.fastq')
+
+```bash
+mercat2-pipeline.py -i /path/to/input-folder -k 3 -n 8 -c 10 -prod
+```
+
+- the prodigal option runs the k-mer counter on both contigs and produced amino acids
+
+## Outputs
+
+- Results are stored in the output folder (default 'mercat_results' of the current working directory)
+  - the 'plots' folder contains an html report with interactive plotly figures
+    - If at least 3 samples are provided a PCA plot will be included in the html report
+  - the 'tsv' folder contains stats tables in tab separated format
+    - if protein files are given, or the -prod option, a .tsv file is created for each sample containing k-mer count, pI, Molecular Weight, and Hydrophobicity metrics
+    - if nucleotide files are given a .tsv file is created for each sample containing k-mer count and GC content
+  - if .fastq raw reads files are used, a 'clean' folder is created with the clean fasta file.
+  - if the -prod option is used, a 'prodigal' folder is created with the amino acid .faa and .gff files
+
+![GitHub Logo](doc/PCA.png)
+
+## Citing Mercat
+
 If you are publishing results obtained using MerCat2, please cite:
 
+### CONTACT
 
-CONTACT
--------
-
-Please send all queries to Mounika Ramapuram Naik &nbsp;&nbsp;      <a href="mailto:mramapur@uncc.edu?"><img src="doc/gmail.png" style="width:25px;height:25px"/>    </a> &nbsp; &nbsp;  <br /> 
-Dr. Richard Allen White III &nbsp;&nbsp;   <a href="mailto:rwhit101@uncc.edu?"><img src="doc/gmail.png" style="width:25px;height:25px"/>      </a>
- <br />
-Or [open an issue](https://github.com/raw-lab/mercat2/issues).
-
+The informatics point-of-contact for this project is [Dr. Richard Allen White III](https://github.com/raw-lab).  
+If you have any questions or feedback, please feel free to get in touch by email.  
+Dr. Richard Allen White III - rwhit101@uncc.edu or raw937@gmail.com.  
+Jose Figueroa - jlfiguer@uncc.edu  
+Or [open an issue](https://github.com/raw-lab/mercat2/issues).  
