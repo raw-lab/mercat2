@@ -10,9 +10,7 @@ def package_files(directory):
     paths = []
     for (path, _, filenames) in os.walk(directory):
         for filename in filenames:
-            #if filename.endswith('.fna'):
             paths.append(os.path.join('..', path, filename))
-    print(paths)
     return paths
 
 
@@ -32,11 +30,11 @@ setuptools.setup(
     license = "MIT License", # metadata
     platforms = ['Unix'], # metadata
     classifiers = [ # This is the new updated way for metadata, but old way seems to still be used in some of the output
-        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.9",
         "License :: OSI Approved :: MIT License",
         "Operating System :: Unix",
     ],
-    python_requires = '==3.7.*',
+    python_requires = '<=3.10',
     install_requires = [
             'setuptools',
             'ray',
@@ -47,9 +45,7 @@ setuptools.setup(
             'plotly',
             'psutil',
             'joblib',
-            'dask',
             'dominate',
             'scikit-learn',
-            'scikit-bio',
     ]
 )

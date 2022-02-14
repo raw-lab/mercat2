@@ -2,12 +2,6 @@
 """mercat2_kmers.py: Module for calculating k-mer counts
 """
 
-import humanize
-import timeit
-from collections import OrderedDict
-from joblib import Parallel, delayed
-
-
 ## Calculate k-mer count
 #
 def calculateKmerCount(seq:str, kmer:int) -> dict:
@@ -45,42 +39,31 @@ def find_kmers(file:str, kmer:int, min_count:int, num_cores:int):
         dict: A dictionary with the counts of each k-mer found.
     '''
 
-    start_time = timeit.default_timer()
-
-    print("Loading Sequences")
-    sequences = OrderedDict()
+    num = 0
+    kmerlist = dict()
     with open(file, 'r') as f:
         seq = ""
-        sname = ""
         for line in f:
             line = line.strip()
             if line.startswith(">"):
-                if sname:
-                    sequences[sname] = ""
+                num += 1
                 if seq:
-                    sequences[sname] = seq
+                    # count k-mers
+                    for i in range((len(seq) - kmer) + 1):
+                        k = seq[i:i+kmer]
+                        if k not in kmerlist:
+                            kmerlist[k] = 0
+                        kmerlist[k] += 1
                     seq = ""
-                sname = line[1:]
-                sname = sname.split("#",1)[0].strip()
             else:
-                line = line.replace("*","")
-                seq += line
-        sequences[sname] = seq
-
-    print(("Number of sequences in " + file + " = "+ str(humanize.intword(len(sequences)))))
+                seq += line.replace("*","")
+        # Count last sequence
+        for i in range((len(seq) - kmer) + 1):
+            k = seq[i:i+kmer]
+            if k not in kmerlist:
+                kmerlist[k] = 0
+            kmerlist[k] += 1
     
-    results = Parallel(n_jobs=num_cores)(
-        delayed(calculateKmerCount)(sequences[seq], kmer) for seq in sequences)
-
-    kmerlist = dict()
-    for res in results:
-        for k,v in res.items():
-            if k in kmerlist:
-                kmerlist[k] += v
-            else: kmerlist[k] = v
-
-    print(f"Time to compute {kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
-
     significant_kmers = dict()
     for k,v in kmerlist.items():
         if kmerlist[k] >= min_count:

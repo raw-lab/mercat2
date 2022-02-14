@@ -2,8 +2,6 @@
 """mercat2_metrics.py: Module for calculating protein metrics
 """
 
-from skbio.diversity import alpha as skbio_alpha
-
 
 #predict_isoelectric_point_ProMoST code from
 #http://isoelectric.ovh.org/
@@ -154,7 +152,7 @@ hydro_scores = {
 "Y" : -1.3,
 "V" : 4.2
 
- }
+}
 
 
 def calculate_MW(seq): #calculate based on average mass
@@ -170,22 +168,3 @@ def calculate_hydro(seq):
     for c in seq:
         if c in hydro_scores: hydro += hydro_scores[c]
     return round(hydro,2)
-
-
-def compute_alpha_beta_diversity(counts,bif):
-
-    abm = dict()
-
-    abm['shannon'] = skbio_alpha.shannon(counts)
-    abm['simpson'] = skbio_alpha.simpson(counts)
-    abm['simpson_e'] = skbio_alpha.simpson_e(counts)
-    abm['goods_coverage'] = skbio_alpha.goods_coverage(counts)
-    abm['fisher_alpha'] = skbio_alpha.fisher_alpha(counts)
-    abm['dominance'] = skbio_alpha.dominance(counts)
-    abm['chao1'] = skbio_alpha.chao1(counts)
-    abm['chao1_ci'] = skbio_alpha.chao1_ci(counts)
-    abm['ace'] = skbio_alpha.ace(counts)
-
-    with open(bif + "_diversity_metrics.txt", 'w') as dmptr:
-        for abmetric in abm:
-            dmptr.write(abmetric + " = " + str(abm[abmetric]) + "\n")

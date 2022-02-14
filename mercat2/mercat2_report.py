@@ -8,7 +8,6 @@ import time
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
-import matplotlib.pyplot as plt
 import plotly.express as px
 from sklearn.decomposition import PCA
 from functools import reduce
@@ -191,7 +190,7 @@ def PCA_plot(dfPCA):
     pivoted = result.T
     res = pivoted.rename(columns=pivoted.iloc[0])
     res1 = res.drop(res.index[0])
-    pca = PCA(n_components=3,svd_solver='randomized')
+    pca = PCA(n_components=3, svd_solver='randomized')
     X_train = pca.fit_transform(res1)
     labels = {
     str(i): f"PC {i+1} ({var:.1f}%)"

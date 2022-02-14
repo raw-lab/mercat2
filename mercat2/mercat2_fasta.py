@@ -144,7 +144,7 @@ def orf_call(basename:str, file:str, outpath:str):
     out_pro = os.path.join(outpath, basename+"_pro.faa")
     out_gff = os.path.join(outpath, basename+".gff")
     out_nuc = os.path.join(outpath, basename+"_nuc.fna")
-    prod_cmd = f"prodigal -i {file} -o {out_gff} -a {out_pro} -f gff -p meta -d {out_nuc}"
+    prod_cmd = f"prodigal -i {file} -o {out_gff} -a {out_pro} -f gff -p meta"
     os.makedirs(outpath, exist_ok=True)
     with open(os.devnull, 'w') as FNULL:
         subprocess.call(prod_cmd, stdout=FNULL, stderr=FNULL, shell=True)

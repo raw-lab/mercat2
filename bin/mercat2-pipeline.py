@@ -12,15 +12,14 @@ import os
 import psutil
 import shutil
 import subprocess
+import ray
 import pandas as pd
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
-from joblib import Parallel, delayed
-
-import dask.dataframe as dd
+import timeit
 
 # Mercat libraries
-from mercat2 import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_report, mercat2_metrics)
+from mercat2 import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_report)
 
 
 # GLOBAL VARIABLES
@@ -52,7 +51,6 @@ def parseargs():
     parser.add_argument('-k', type=int, required = True, help='kmer length')
     parser.add_argument('-n', type=int, default=num_cores, help='no of cores [default = all]')  # no of cores to use
     parser.add_argument('-c', type=int, default=10, help='minimum kmer count [default = 10]')  # minimum kmer count to report
-    parser.add_argument('-prot', action='store_true', help='assume fasta files are protein input files')
     parser.add_argument('-prod', action='store_true', help='run prodigal on fasta file')
     parser.add_argument('-s', type=int, default=100, required=False, help='Split into x MB files. Default = 100MB')
     parser.add_argument('-o', type=str, default='mercat_results', required=False, help="Output folder, default = 'mercat_results' in current directory")
@@ -74,14 +72,13 @@ def parseargs():
 
     # check prodigal/protein flags
     if args.prod:
-        if args.prot:
-            parser.error("Can only provide one of -prot or -prod option at a time")
         check_command('prodigal')
     return args
 
 
 ## Chunk Files
 #
+@ray.remote(num_cpus=1)
 def chunk_files(name:str, file:str, chunk_size:int, outpath:str):
     '''Checks if the given file is larger than chunk_size and splits the file as necessary.
     Fasta files are split at sequence headers to keep individual sequences contiguous.
@@ -119,7 +116,6 @@ def mercat_main():
     m_inputfolder = __args__.f
     m_min_count = __args__.c
     m_flag_prodigal = __args__.prod
-    m_flag_protein = __args__.prot
     m_chunk_size = __args__.s
     m_outputfolder = __args__.o
     
@@ -127,7 +123,11 @@ def mercat_main():
         shutil.rmtree(m_outputfolder)
     os.makedirs(m_outputfolder, exist_ok=True)
 
-    np_string = 'protein' if m_flag_protein or m_flag_prodigal else 'nucleotide' #TODO:Rename variable
+    # Initialize Ray
+    try:
+        ray.init(address='auto') # First try if ray is setup for a cluster
+    except:
+        ray.init()
 
     # Load input files
     all_ipfiles = []
@@ -174,33 +174,49 @@ def mercat_main():
     
     # ORF Call if -prod flag
     if m_flag_prodigal:
+        @ray.remote(num_cpus=1)
+        def orf_call(basename, file, prodpath):
+            return mercat2_fasta.orf_call(basename, file, prodpath)
+
         print(f"Running prodigal on {len(files_nucleotide)} files")
         prodpath = os.path.join(m_outputfolder, 'prodigal')
-        results = Parallel(n_jobs=m_num_cores)(
-            delayed(mercat2_fasta.orf_call)(basename, file, prodpath) for basename,file in files_nucleotide.items())
-        for res in results:
-            files_protein[res[0]] = res[1]
+        jobs = []
+        for basename,file in files_nucleotide.items():
+            jobs += [orf_call.remote(basename, file, prodpath)]
+        while jobs:
+            ready,jobs = ray.wait(jobs)
+            name,amino = ray.get(ready[0])
+            files_protein[name] = amino
+
 
     # Chunk large files
     print("Checking for large files")
     dir_chunks = os.path.join(m_outputfolder, "chunks")
     # nucleotides
-    results = Parallel(n_jobs=m_num_cores)(delayed(chunk_files)
-        (basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_nucleotide"))
-        for basename,file in files_nucleotide.items())
-    for res in results:
-        files_nucleotide[res[0]] = res[1]
+    jobs = []
+    for basename,file in files_nucleotide.items():
+        jobs += [chunk_files.remote(basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_nucleotide"))]
+    while jobs:
+        ready,jobs = ray.wait(jobs)
+        name,chunks = ray.get(ready[0])
+        files_nucleotide[name] = chunks
     # proteins
-    results = Parallel(n_jobs=m_num_cores)(delayed(chunk_files)
-        (basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_protein"))
-        for basename,file in files_protein.items())
-    for res in results:
-        files_protein[res[0]] = res[1]
+    jobs = []
+    for basename,file in files_protein.items():
+        jobs += [chunk_files.remote(basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_protein"))]
+    while jobs:
+        ready,jobs = ray.wait(jobs)
+        name,chunks = ray.get(ready[0])
+        files_protein[name] = chunks
 
     # Begin processing files
     figPlots = dict()
     tsv_stats = dict()
     os.makedirs(os.path.join(m_outputfolder, 'tsv'), exist_ok=True)
+
+    @ray.remote(num_cpus=1)
+    def countKmers(file, kmer, min_count, num_cores):
+        return mercat2_kmers.find_kmers(file, kmer, min_count, num_cores)
 
     # Process Nucleotides
     print("Processing Nucleotides")
@@ -210,14 +226,20 @@ def mercat_main():
 
         # Run Mercat
         print(f"Running mercat using {m_num_cores} cores on {basename}{np_string}")
+        start_time = timeit.default_timer()
         kmers = dict()
+        jobs = []
         for file in files:
-            data = mercat2_kmers.find_kmers(file, m_kmer, m_min_count, m_num_cores)
-            for k,v in data.items():
+            jobs += [countKmers.remote(file, m_kmer, m_min_count, m_num_cores)]
+        while(jobs):
+            ready,jobs = ray.wait(jobs)
+            for k,v in ray.get(ready[0]).items():
                 if k in kmers:
                     kmers[k] += v
                 else:
                     kmers[k] = v
+        print(f"Significant k-mers: {len(kmers)}")
+        print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
         df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
         outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
         dfGC = df_list[basename].reset_index().rename(columns=dict(index='k-mer'))
@@ -246,15 +268,20 @@ def mercat_main():
         np_string = '_protein'
 
         # Run Mercat
-        print(f"Running mercat using {m_num_cores} cores on {basename}{np_string}")
+        start_time = timeit.default_timer()
         kmers = dict()
+        jobs = []
         for file in files:
-            data = mercat2_kmers.find_kmers(file, m_kmer, m_min_count, m_num_cores)
-            for k,v in data.items():
+            jobs += [countKmers.remote(file, m_kmer, m_min_count, m_num_cores)]
+        while(jobs):
+            ready,jobs = ray.wait(jobs)
+            for k,v in ray.get(ready[0]).items():
                 if k in kmers:
                     kmers[k] += v
                 else:
                     kmers[k] = v
+        print("Significant k-mers:", len(kmers))
+        print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
         df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
         outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
         df_list[basename].to_csv(outfile, index=False, sep='\t')

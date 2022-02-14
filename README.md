@@ -2,15 +2,48 @@
 
 ![GitHub Logo](doc/mercat_workflow.jpg)
 
+## Dependencies
+
+MerCat runs on python3 up to version 3.9. Some of its dependencies do not support 3.10 yet.
+
+### external dependencies
+
+MerCat2 can run without external dependencies based on the options used.  
+
+Required dependencies:
+
+- When a raw read .fastq file is given
+  - fastqc [https://www.bioinformatics.babraham.ac.uk/projects/fastqc/]
+  - fastp [https://github.com/OpenGene/fastp]
+
+- when the -prod option is used
+  - prodigal [https://github.com/hyattpd/Prodigal]
+
+These are available through BioConda.
+
+```bash
+conda install -c bioconda fastqc fastp prodigal
+```
+
 ## Installing MerCat2
 
-- Available via Anaconda: Enable BioConda repo and run `conda install mercat2`
+### Anaconda Installer
+
+- Available via BioConda: Enable BioConda repo and run `conda install mercat2`
 
 ```bash
 conda install -c bioconda mercat2
 ```
 
-## Source Installer
+### PIP Installer
+
+BioConda dependencies are not automatically installed when using pip.
+
+```bash
+pip install mercat2
+```
+
+### Source Installer
 
 - Clone mercat2 from github
 
@@ -27,7 +60,6 @@ git clone https://github.com/raw-lab/mercat2.git
 - -k K k-mer length
 - -n N no of cores [default = all]
 - -c C minimum k-mer count [default = 10]
-- -prot assume .fasta files are in protein mode
 - -prod run prodigal on nucleotide assembled contigs
   - Must be one of ['.fa', '.fna', '.ffn', '.fasta', 'fastq']
 - -s S split files into chunks of S size, in MB (default is 100MB)
