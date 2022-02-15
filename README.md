@@ -29,10 +29,20 @@ conda install -c bioconda fastqc fastp prodigal
 
 ### Anaconda Installer
 
-- Available via BioConda: Enable BioConda repo and run `conda install mercat2`
+- Available via Bioconda:
+
+* MerCat2 is currently waiting approval at Bioconda, to install please use these commands:
 
 ```bash
-conda install -c bioconda mercat2
+conda create -n mercat2 -c bioconda fastqc fastp prodigal python=3.9
+conda activate mercat2
+pip install mercat2
+```
+
+* Once MerCat2 is approved and propagates through Bioconda, use this command:
+
+```bash
+conda install -c bioconda fastqc fastp prodigal mercat2 python=3.9
 ```
 
 ### PIP Installer
@@ -118,6 +128,13 @@ mercat2-pipeline.py -i /path/to/input-folder -k 3 -n 8 -c 10 -prod
   - if the -prod option is used, a 'prodigal' folder is created with the amino acid .faa and .gff files
 
 ![GitHub Logo](doc/PCA.png)
+
+## Notes on memory usage and speed
+
+MerCat2 uses a substantial amount of memory when the k-mer 4 is high.  
+Running MerCat2 on a personal computer using a k-mer length of ~4 should be OK. Total memory usage can be reduced using the Chunker feature (-s option), but keep in mind that in testing when the chunk size is too small (1MB) some of the least significant k-mers will get lost. This does not seem to affect the overall results, but it is something to keep in mind. Using the chunker and reducing the number of CPUs available (-n option) can help reduce memory requirements.  
+  
+The speed of MerCat2 can be increased when more memory or computer nodes are available on a cluster and using a chunk size of about 100Mb.
 
 ## Citing Mercat
 
