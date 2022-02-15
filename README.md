@@ -9,8 +9,8 @@ MerCat runs on python3 up to version 3.9. Some of its dependencies do not suppor
 ### Standard install 
 
 ```conda create -n 
-mercat2 -c bioconda fastqc fastp prodigal python=3.9
-``` </p>
+mercat2 -c bioconda fastqc fastp prodigal python=3.9```
+
 
 ```pip 
 install mercat2
