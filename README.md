@@ -6,11 +6,20 @@
 
 MerCat runs on python3 up to version 3.9. Some of its dependencies do not support 3.10 yet.
 
-### Standard install 
+## Standard install 
+- Two step (Bioconda and pip)
+
+### Anaconda Installer 
+- Installs dependences fastqc, fastp, and prodigal
+- Create a new conda enviroment 
+- Enable BioConda repo and run
 
 ```conda create -n 
 mercat2 -c bioconda fastqc fastp prodigal python=3.9
 ```
+
+### Pip Installer
+- Installs main package
 
 ```
 pip install mercat2
