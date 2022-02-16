@@ -1,29 +1,10 @@
 # MerCat2: python code for versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis
 
-![GitHub Logo](doc/mercat_workflow.jpg)
+![GitHub Logo](https://github.com/raw-lab/mercat2/raw/master/doc/mercat_workflow.jpg)
 
 ## Dependencies
 
-MerCat runs on python3 up to version 3.9. Some of its dependencies do not support 3.10 yet.
-
-## Standard install 
-- Two step (Bioconda and pip)
-
-### Anaconda Installer 
-- Installs dependences fastqc, fastp, and prodigal
-- Create a new conda enviroment 
-- Enable BioConda repo and run
-
-```conda create -n 
-mercat2 -c bioconda fastqc fastp prodigal python=3.9
-```
-
-### Pip Installer
-- Installs main package
-
-```
-pip install mercat2
-```
+MerCat runs on python 3.6 up to version 3.9. Some of its dependencies do not support 3.10 yet.
 
 ### external dependencies
 
@@ -46,34 +27,26 @@ conda install -c bioconda fastqc fastp prodigal
 
 ## Installing MerCat2
 
-### Anaconda Installer
+### Option 1: Anaconda Installer
 
 - Available via Bioconda:
 
-* MerCat2 is currently waiting approval at Bioconda, to install please use these commands:
-
 ```bash
-conda create -n mercat2 -c bioconda fastqc fastp prodigal python=3.9
+conda create -n mercat2 -c bioconda mercat2 ray-dashboard fastqc fastp prodigal
 conda activate mercat2
-pip install mercat2
 ```
 
-* Once MerCat2 is approved and propagates through Bioconda, use this command:
+### Option 2: PIP Installer
 
-```bash
-conda install -c bioconda fastqc fastp prodigal mercat2 python=3.9
-```
-
-### PIP Installer
-
-BioConda dependencies are not automatically installed when using pip.
+- Dependencies are not automatically installed when using pip.
 
 ```bash
 pip install mercat2
 ```
 
-### Source Installer
+### Option 3: Source Installer
 
+- *Latest build might be unstable
 - Clone mercat2 from github
 
 ```bash
@@ -146,7 +119,7 @@ mercat2-pipeline.py -i /path/to/input-folder -k 3 -n 8 -c 10 -prod
   - if .fastq raw reads files are used, a 'clean' folder is created with the clean fasta file.
   - if the -prod option is used, a 'prodigal' folder is created with the amino acid .faa and .gff files
 
-![GitHub Logo](doc/PCA.png)
+![GitHub Logo](https://github.com/raw-lab/mercat2/raw/master/doc/PCA.png)
 
 ## Notes on memory usage and speed
 

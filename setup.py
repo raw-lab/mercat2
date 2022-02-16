@@ -27,11 +27,15 @@ setuptools.setup(
     packages = ['mercat2'], # list of packages, installed to 'site-packages' folder
     package_dir = dict(mercat2='mercat2'), # dict with 'package'='relative dir'
     package_data = dict(mercat2=package_files('mercat2/data')), # add non-python data to package, relative paths
-    license = "MIT License", # metadata
+    license = "BSD License", # metadata
     platforms = ['Unix'], # metadata
     classifiers = [ # This is the new updated way for metadata, but old way seems to still be used in some of the output
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: BSD License",
         "Operating System :: Unix",
     ],
     python_requires = '<3.10',
