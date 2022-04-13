@@ -21,7 +21,7 @@ Required dependencies:
 
 These are available through BioConda.
 
-```bash
+```
 conda install -c bioconda fastqc fastp prodigal
 ```
 
@@ -31,7 +31,7 @@ conda install -c bioconda fastqc fastp prodigal
 
 - Available via Bioconda:
 
-```bash
+```
 conda create -n mercat2 -c bioconda mercat2 ray-dashboard fastqc fastp prodigal
 conda activate mercat2
 ```
@@ -40,20 +40,21 @@ conda activate mercat2
 
 - Dependencies are not automatically installed when using pip.
 
-```bash
+```
 pip install mercat2
 ```
 
 ### Option 3: Source Installer
 
-- *Latest build might be unstable
 - Clone mercat2 from github
+- Run install_mercat2.py to install all required dependencies
 
-```bash
+```
 git clone https://github.com/raw-lab/mercat2.git
+python install_mercat2.py
 ```
 
-- Run install_mercat2.py to install all required dependencies
+
 
 ## Usage
 
@@ -78,31 +79,31 @@ Mercat assumes the input file format based on the extension provided
 
 ### Run mercat2 on a protein file (protein fasta - '.faa')
 
-```bash
+```
 mercat2-pipeline.py -i file-name.faa -k 3 -c 10
 ```
 
 ### Run mercat2 on a nucleotide file (nucleotide fasta - '.fa', '.fna', '.ffn', '.fasta')
 
-```bash
+```
 mercat2-pipeline.py -i file-name.fna -k 3 -n 8 -c 10
 ```
 
 ### Run mercat2 on a nucleotide file raw data (nucleotide fastq - '.fastq')
 
-```bash
+```
 mercat2-pipeline.py -i file-name.fastq -k 3 -n 8 -c 10
 ```
 
 ### Run on many samples within a folder
 
-```bash
+```
 mercat2-pipeline.py -f /path/to/input-folder -k 3 -n 8 -c 10
 ```
 
 ### Run on sample with prodigal option (raw reads or nucleotide contigs - '.fa', '.fna', '.ffn', '.fasta', '.fastq')
 
-```bash
+```
 mercat2-pipeline.py -i /path/to/input-folder -k 3 -n 8 -c 10 -prod
 ```
 
