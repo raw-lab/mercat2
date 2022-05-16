@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""mercat2-pipeline.py: Python code for Parallel k-mer counting."""
+"""mercat2.py: Python code for Parallel k-mer counting."""
 
-__version__     = "0.1"
+__version__     = "0.2"
 __author__      = "Jose L. Figueroa III, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
@@ -94,7 +94,7 @@ def chunk_files(name:str, file:str, chunk_size:int, outpath:str):
     '''
 
     if os.stat(file).st_size >= (chunk_size*1024*1024):
-        print("Large input file provided: Splitting it into smaller files...\n")
+        print(f"Large input file provided: {file}\nSplitting it into smaller files...\n")
         os.makedirs(outpath, exist_ok=True)
         all_chunks = mercat2_Chunker.Chunker(file, outpath, str(chunk_size)+"M", ">").files
     else:
@@ -190,24 +190,25 @@ def mercat_main():
 
 
     # Chunk large files
-    print("Checking for large files")
-    dir_chunks = os.path.join(m_outputfolder, "chunks")
-    # nucleotides
-    jobs = []
-    for basename,file in files_nucleotide.items():
-        jobs += [chunk_files.remote(basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_nucleotide"))]
-    while jobs:
-        ready,jobs = ray.wait(jobs)
-        name,chunks = ray.get(ready[0])
-        files_nucleotide[name] = chunks
-    # proteins
-    jobs = []
-    for basename,file in files_protein.items():
-        jobs += [chunk_files.remote(basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_protein"))]
-    while jobs:
-        ready,jobs = ray.wait(jobs)
-        name,chunks = ray.get(ready[0])
-        files_protein[name] = chunks
+    if m_chunk_size > 0:
+        print("Checking for large files")
+        dir_chunks = os.path.join(m_outputfolder, "chunks")
+        # nucleotides
+        jobs = []
+        for basename,file in files_nucleotide.items():
+            jobs += [chunk_files.remote(basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_nucleotide"))]
+        while jobs:
+            ready,jobs = ray.wait(jobs)
+            name,chunks = ray.get(ready[0])
+            files_nucleotide[name] = chunks
+        # proteins
+        jobs = []
+        for basename,file in files_protein.items():
+            jobs += [chunk_files.remote(basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_protein"))]
+        while jobs:
+            ready,jobs = ray.wait(jobs)
+            name,chunks = ray.get(ready[0])
+            files_protein[name] = chunks
 
     # Begin processing files
     figPlots = dict()

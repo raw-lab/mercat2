@@ -16,17 +16,17 @@ def package_files(directory):
 
 setuptools.setup(
     name = "mercat2",
-    version = "0.1",
-    author = "Richard White III",
-    author_email = "rwhit101@uncc.edu",
+    version = "0.2",
+    author = "Jose Luis Figueroa III, Richard White III",
+    author_email = "jlfiguer@uncc.edu",
     description = "versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis",
     long_description = open("README.md", "r").read(),
     long_description_content_type = "text/markdown",
     url = "https://github.com/raw-lab/mercat2",
-    scripts = ['bin/mercat2-pipeline.py'], # scripts to install to 'bin' path
+    scripts = ['bin/mercat2.py'], # scripts to install to 'bin' path
     packages = ['mercat2'], # list of packages, installed to 'site-packages' folder
-    package_dir = dict(mercat2='mercat2'), # dict with 'package'='relative dir'
-    package_data = dict(mercat2=package_files('mercat2/data')), # add non-python data to package, relative paths
+    package_dir = dict(mercat2='lib'), # dict with 'package'='relative dir'
+    package_data = dict(mercat2=package_files('lib/data')), # add non-python data to package, relative paths
     license = "BSD License", # metadata
     platforms = ['Unix'], # metadata
     classifiers = [ # This is the new updated way for metadata, but old way seems to still be used in some of the output

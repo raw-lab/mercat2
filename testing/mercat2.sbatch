@@ -23,9 +23,9 @@ echo ""
 
 module load anaconda3
 eval "$(conda shell.bash hook)"
-conda activate mercat
+conda activate mercat2
 
-command time mercat2-pipeline.py -k 4 -f 5_genomes
+command time mercat2.py -k 4 -f 5_genomes
 
 echo ""
 echo "======================================================"

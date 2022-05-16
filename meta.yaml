@@ -30,6 +30,7 @@ requirements:
     - psutil
     - python
     - ray-core
+    - ray-dashboard
     - scikit-learn
 
 test:
