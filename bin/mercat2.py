@@ -19,7 +19,7 @@ from argparse import RawDescriptionHelpFormatter
 import timeit
 
 # Mercat libraries
-from mercat2 import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_report)
+from mercat2_lib import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_report)
 
 
 # GLOBAL VARIABLES
