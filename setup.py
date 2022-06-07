@@ -1,9 +1,6 @@
 import os
 import setuptools
 
-#Anaconda dependencies = "fastqc fastp prodigal"
-#$ conda create -n mercat -c bioconda python=3.7 fastqc fastp prodigal -y
-
 
 # recursively load package files
 def package_files(directory):
@@ -41,16 +38,15 @@ setuptools.setup(
     ],
     python_requires = '<3.10',
     install_requires = [
-            'setuptools',
-            'ray',
-            'configargparse',
-            'pandas',
-            'numpy',
-            'humanize',
-            'plotly',
-            'psutil',
-            'joblib',
-            'dominate',
-            'scikit-learn',
+        'setuptools',
+        'ray',
+        'configargparse',
+        'pandas',
+        'numpy',
+        'humanize',
+        'plotly',
+        'psutil',
+        'dominate',
+        'scikit-learn',
     ]
 )

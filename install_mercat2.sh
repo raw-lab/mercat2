@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 set -e
 
 function install_conda {
@@ -7,8 +6,9 @@ function install_conda {
     eval "$(conda shell.bash hook)"
 
     # create the mercat environment in conda
-    conda create -n mercat2 -c conda-forge -c bioconda fastqc fastp prodigal ray-core ray-dashboard configargparse pandas numpy humanize plotly psutil joblib dominate scikit-learn -y
-    conda activate mercat2
+    ENV_NAME=mercat2
+    mamba create -n $ENV_NAME -c conda-forge -c bioconda fastqc fastp prodigal ray-core ray-dashboard ray-default configargparse pandas numpy humanize plotly psutil dominate scikit-learn -y
+    conda activate $ENV_NAME
     pip install .
     return
 }

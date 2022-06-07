@@ -1,10 +1,42 @@
 # MerCat2: python code for versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis
 
-![GitHub Logo](https://github.com/raw-lab/mercat2/raw/master/doc/mercat_workflow.jpg)
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/mercat2/README.html)
+  
+![GitHub Logo](https://github.com/raw-lab/mercat2/raw/master/doc/mercat_workflow.jpg)]
+
+## Installing MerCat2
+
+### Option 1: Anaconda Installer
+
+- Available via Bioconda:
+
+```bash
+conda create -n mercat2 -c conda-forge -c bioconda mercat2
+conda activate mercat2
+```
+
+### Option 2: PIP Installer
+
+- Dependencies are not automatically installed when using pip.
+
+```bash
+pip install mercat2
+```
+
+### Option 3: Source Installer
+
+- Clone mercat2 from github
+- Run install_mercat2.py to install all required dependencies
+
+```bash
+git clone https://github.com/raw-lab/mercat2.git
+cd mercat2
+python install_mercat2.py
+```
 
 ## Dependencies
 
-MerCat runs on python 3.6 up to version 3.9. Some of its dependencies do not support 3.10 yet.
+MerCat2 runs on python 3.6 up to version 3.9. Some of its dependencies do not support 3.10 yet.
 
 ### external dependencies
 
@@ -21,40 +53,9 @@ Required dependencies:
 
 These are available through BioConda.
 
-```
+```bash
 conda install -c bioconda fastqc fastp prodigal
 ```
-
-## Installing MerCat2
-
-### Option 1: Anaconda Installer
-
-- Available via Bioconda:
-
-```
-conda create -n mercat2 -c bioconda mercat2 ray-dashboard fastqc fastp prodigal
-conda activate mercat2
-```
-
-### Option 2: PIP Installer
-
-- Dependencies are not automatically installed when using pip.
-
-```
-pip install mercat2
-```
-
-### Option 3: Source Installer
-
-- Clone mercat2 from github
-- Run install_mercat2.py to install all required dependencies
-
-```
-git clone https://github.com/raw-lab/mercat2.git
-python install_mercat2.py
-```
-
-
 
 ## Usage
 
@@ -79,32 +80,32 @@ Mercat assumes the input file format based on the extension provided
 
 ### Run mercat2 on a protein file (protein fasta - '.faa')
 
-```
-mercat2-pipeline.py -i file-name.faa -k 3 -c 10
+```bash
+mercat2.py -i file-name.faa -k 3 -c 10
 ```
 
 ### Run mercat2 on a nucleotide file (nucleotide fasta - '.fa', '.fna', '.ffn', '.fasta')
 
-```
-mercat2-pipeline.py -i file-name.fna -k 3 -n 8 -c 10
+```bash
+mercat2.py -i file-name.fna -k 3 -n 8 -c 10
 ```
 
 ### Run mercat2 on a nucleotide file raw data (nucleotide fastq - '.fastq')
 
-```
-mercat2-pipeline.py -i file-name.fastq -k 3 -n 8 -c 10
+```bash
+mercat2.py -i file-name.fastq -k 3 -n 8 -c 10
 ```
 
 ### Run on many samples within a folder
 
-```
-mercat2-pipeline.py -f /path/to/input-folder -k 3 -n 8 -c 10
+```bash
+mercat2.py -f /path/to/input-folder -k 3 -n 8 -c 10
 ```
 
 ### Run on sample with prodigal option (raw reads or nucleotide contigs - '.fa', '.fna', '.ffn', '.fasta', '.fastq')
 
-```
-mercat2-pipeline.py -i /path/to/input-folder -k 3 -n 8 -c 10 -prod
+```bash
+mercat2.py -i /path/to/input-folder -k 3 -n 8 -c 10 -prod
 ```
 
 - the prodigal option runs the k-mer counter on both contigs and produced amino acids

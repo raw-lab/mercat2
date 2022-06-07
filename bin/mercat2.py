@@ -125,9 +125,9 @@ def mercat_main():
 
     # Initialize Ray
     try:
-        ray.init(address='auto') # First try if ray is setup for a cluster
+        ray.init(address='auto', log_to_driver=False) # First try if ray is setup for a cluster
     except:
-        ray.init()
+        ray.init(log_to_driver=False)
 
     # Load input files
     all_ipfiles = []
@@ -137,7 +137,7 @@ def mercat_main():
     cleanpath = os.path.join(m_outputfolder, 'clean')
     print("Loading files")
     if m_inputfolder:
-        m_inputfolder = os.path.abspath(m_inputfolder)
+        m_inputfolder = os.path.abspath(os.path.expanduser(m_inputfolder))
         for fname in os.listdir(m_inputfolder):
             file = os.path.join(m_inputfolder, fname)
             if not os.path.isdir(file):
@@ -156,7 +156,8 @@ def mercat_main():
                     files_protein[basename] = file
                 all_ipfiles.append(file)
     else:
-        basename, f_ext = os.path.splitext(m_inputfile)
+        basepath = os.path.abspath(os.path.expanduser(m_inputfile))
+        basename, f_ext = os.path.splitext(os.path.basename(basepath))
         if f_ext in FILE_EXT_FASTQ:
             check_command('fastqc')
             check_command('fastp')
@@ -196,7 +197,8 @@ def mercat_main():
         # nucleotides
         jobs = []
         for basename,file in files_nucleotide.items():
-            jobs += [chunk_files.remote(basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_nucleotide"))]
+            chunk_path = os.path.join(dir_chunks, f"{basename}_nucleotide")
+            jobs += [chunk_files.remote(basename, file, m_chunk_size, chunk_path)]
         while jobs:
             ready,jobs = ray.wait(jobs)
             name,chunks = ray.get(ready[0])
@@ -204,7 +206,8 @@ def mercat_main():
         # proteins
         jobs = []
         for basename,file in files_protein.items():
-            jobs += [chunk_files.remote(basename, file, m_chunk_size, os.path.join(dir_chunks, f"{basename}_protein"))]
+            chunk_path = os.path.join(dir_chunks, f"{basename}_protein")
+            jobs += [chunk_files.remote(basename, file, m_chunk_size, chunk_path)]
         while jobs:
             ready,jobs = ray.wait(jobs)
             name,chunks = ray.get(ready[0])
@@ -220,7 +223,8 @@ def mercat_main():
         return mercat2_kmers.find_kmers(file, kmer, min_count, num_cores)
 
     # Process Nucleotides
-    print("Processing Nucleotides")
+    if len(files_nucleotide):
+        print("Processing Nucleotides")
     df_list = dict()
     for basename,files in files_nucleotide.items():
         np_string = '_nucleotide'
@@ -239,13 +243,16 @@ def mercat_main():
                     kmers[k] += v
                 else:
                     kmers[k] = v
-        print(f"Significant k-mers: {len(kmers)}")
         print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
-        df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
-        outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
-        dfGC = df_list[basename].reset_index().rename(columns=dict(index='k-mer'))
-        dfGC['GC%'] = dfGC['k-mer'].apply(lambda k: round(100.0 * (k.count('G') + k.count('C')) / len(k), 2))
-        dfGC.to_csv(outfile, index=False, sep='\t')
+        if len(kmers):
+            print(f"Significant k-mers: {len(kmers)}")
+            df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
+            outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
+            dfGC = df_list[basename].reset_index().rename(columns=dict(index='k-mer'))
+            dfGC['GC%'] = dfGC['k-mer'].apply(lambda k: round(100.0 * (k.count('G') + k.count('C')) / len(k), 2))
+            dfGC.to_csv(outfile, index=False, sep='\t')
+        else:
+            print(f"No significant k-mers found")
     # Stacked Bar Plots (top kmer counts)
     if len(df_list):
         figPlots["Combined Nucleotide kmer Summary"] = mercat2_report.kmer_summary(df_list)
@@ -263,7 +270,8 @@ def mercat_main():
     
 
     # Process Proteins
-    print("Processing Proteins")
+    if len(files_protein):
+        print("Processing Proteins")
     df_list = dict()
     for basename,files in files_protein.items():
         np_string = '_protein'
@@ -281,11 +289,14 @@ def mercat_main():
                     kmers[k] += v
                 else:
                     kmers[k] = v
-        print("Significant k-mers:", len(kmers))
         print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
-        df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
-        outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
-        df_list[basename].to_csv(outfile, index=False, sep='\t')
+        if len(kmers):
+            print("Significant k-mers:", len(kmers))
+            df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
+            outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
+            df_list[basename].to_csv(outfile, index=False, sep='\t')
+        else:
+            print(f"No significant k-mers found")
     # Stacked Bar Plots (top kmer counts)
     if len(df_list):
         figPlots["Combined Protein kmer Summary"] = mercat2_report.kmer_summary(df_list)

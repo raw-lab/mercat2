@@ -111,7 +111,8 @@ def GC_plot_sample(gc_content: dict):
     '''
 
     df = pd.DataFrame.from_dict(data=gc_content, orient='index', columns=['GC Content'])
-    fig = px.bar(df, template="plotly_white")
+    fig = px.bar(df, template="plotly_white",
+        labels={'index':'Sample', 'value':'GC percent'})
     fig.update_layout(font=dict(color="Black"))
     return fig
 
