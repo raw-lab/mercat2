@@ -7,9 +7,11 @@ import pkg_resources as pkg
 import time
 import numpy as np
 import pandas as pd
+import dask.dataframe as dd
 import plotly.graph_objs as go
 import plotly.express as px
-from sklearn.decomposition import PCA
+#from sklearn.decomposition import PCA
+from dask_ml.decomposition import PCA
 from functools import reduce
 import dominate
 from dominate.tags import *
@@ -176,7 +178,7 @@ def plot_sample_metrics(protein_samples: dict):
 
 
 # PCA
-def PCA_plot(dfPCA):
+def PCA_plot(ddf_counts):
     '''Creates a 3D plotly scatter plot of the PCA of the given Dataframe.
 
     Parameters:
@@ -186,19 +188,18 @@ def PCA_plot(dfPCA):
         plotly fig: A plotly 3D scatter plot of the PCA of the dataframe.
     '''
 
-    df_merged2 = dfPCA
-    result = df_merged2.replace(np.nan, 0)
-    pivoted = result.T
-    res = pivoted.rename(columns=pivoted.iloc[0])
-    res1 = res.drop(res.index[0])
-    pca = PCA(n_components=3, svd_solver='randomized')
-    X_train = pca.fit_transform(res1)
+    ddf = ddf_counts.fillna(0)
+    #pivoted = result.T
+    #res = pivoted.rename(columns=pivoted.iloc[0])
+    #res1 = res.drop(res.index[0])
+    pca = PCA(n_components=3, svd_solver='full')
+    X_train = pca.fit_transform(ddf.to_dask_array())
     labels = {
     str(i): f"PC {i+1} ({var:.1f}%)"
     for i, var in enumerate(pca.explained_variance_ratio_ * 100)
     }
     figPCA = px.scatter_3d(
-        X_train, x=0, y=1, z=2, color=res1.index,
+        X_train, x=0, y=1, z=2, color=ddf.index,
         labels=labels,
         template="plotly_white"
     )

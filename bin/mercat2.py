@@ -3,7 +3,7 @@
 
 """mercat2.py: Python code for Parallel k-mer counting."""
 
-__version__     = "0.2"
+__version__     = "0.3"
 __author__      = "Jose L. Figueroa III, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import ray
 import pandas as pd
+import dask.dataframe as dd
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import timeit
@@ -219,23 +220,16 @@ def mercat_main():
     os.makedirs(os.path.join(m_outputfolder, 'tsv'), exist_ok=True)
 
     @ray.remote(num_cpus=1)
-    def countKmers(file, kmer, min_count, num_cores):
-        return mercat2_kmers.find_kmers(file, kmer, min_count, num_cores)
+    def countKmers(file):
+        return mercat2_kmers.find_kmers(file, m_kmer, m_min_count, m_num_cores)
 
-    # Process Nucleotides
-    if len(files_nucleotide):
-        print("Processing Nucleotides")
-    df_list = dict()
-    for basename,files in files_nucleotide.items():
-        np_string = '_nucleotide'
-
-        # Run Mercat
-        print(f"Running mercat using {m_num_cores} cores on {basename}{np_string}")
-        start_time = timeit.default_timer()
+    @ray.remote(num_cpus=1)
+    def run_mercat2(basename:str, files:list, type_string):
+        #start_time = timeit.default_timer()
         kmers = dict()
         jobs = []
         for file in files:
-            jobs += [countKmers.remote(file, m_kmer, m_min_count, m_num_cores)]
+            jobs += [countKmers.remote(file)]
         while(jobs):
             ready,jobs = ray.wait(jobs)
             for k,v in ray.get(ready[0]).items():
@@ -243,18 +237,42 @@ def mercat_main():
                     kmers[k] += v
                 else:
                     kmers[k] = v
-        print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
+        #print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
         if len(kmers):
             print(f"Significant k-mers: {len(kmers)}")
-            df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
-            outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
-            dfGC = df_list[basename].reset_index().rename(columns=dict(index='k-mer'))
-            dfGC['GC%'] = dfGC['k-mer'].apply(lambda k: round(100.0 * (k.count('G') + k.count('C')) / len(k), 2))
-            dfGC.to_csv(outfile, index=False, sep='\t')
+            df = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
+            #out_gcc = os.path.join(m_outputfolder, 'tsv', f"{basename}{type_string}_summary.tsv")
+            #dfGC = df.reset_index().rename(columns=dict(index='k-mer'))
+            #dfGC['GC%'] = dfGC['k-mer'].apply(lambda k: round(100.0 * (k.count('G') + k.count('C')) / len(k), 2))
+            #dfGC.to_csv(out_gcc, index=False, sep='\t')
+            out_counts = os.path.join(m_outputfolder, 'tsv', f"{basename}{type_string}_counts.tsv")
+            df.to_csv(out_counts, index=True, sep='\t')
+            return basename,df #out_counts
         else:
             print(f"No significant k-mers found")
+            return None
+
+    ## Process Nucleotides ##
+    if len(files_nucleotide):
+        print("Processing Nucleotides")
+        print(f"Running Mercat2 using {m_num_cores} cores")
+    jobs = []
+    start_time = timeit.default_timer()
+    for basename,files in files_nucleotide.items():
+        jobs += [run_mercat2.remote(basename, files, '_nucleotide')]
+
+    df_list = dict()
+    while(jobs):
+        ready,jobs = ray.wait(jobs)
+        if ready[0]:
+            basename,kmers = ray.get(ready[0])
+            df_list[basename] = kmers
+    if len(files_nucleotide):
+        print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
+
     # Stacked Bar Plots (top kmer counts)
     if len(df_list):
+        print("Creating Nucleotide Graphs")
         figPlots["Combined Nucleotide kmer Summary"] = mercat2_report.kmer_summary(df_list)
         if len(files_nucleotide) > 3:
             dfPCA = pd.DataFrame()
@@ -267,46 +285,41 @@ def mercat_main():
             figPlots['k-mer GC Summary'] = mercat2_report.GC_plot_kmer(df_list)
     if len(gc_content) > 0:
         figPlots['Sample GC Summary'] = mercat2_report.GC_plot_sample(gc_content)
-    
 
-    # Process Proteins
+
+    ## Process Proteins ##
     if len(files_protein):
         print("Processing Proteins")
-    df_list = dict()
+        print(f"Running Mercat2 using {m_num_cores} cores")
+    jobs = []
+    start_time = timeit.default_timer()
     for basename,files in files_protein.items():
-        np_string = '_protein'
+        jobs += [run_mercat2.remote(basename, files, '_protein')]
 
-        # Run Mercat
-        start_time = timeit.default_timer()
-        kmers = dict()
-        jobs = []
-        for file in files:
-            jobs += [countKmers.remote(file, m_kmer, m_min_count, m_num_cores)]
-        while(jobs):
-            ready,jobs = ray.wait(jobs)
-            for k,v in ray.get(ready[0]).items():
-                if k in kmers:
-                    kmers[k] += v
-                else:
-                    kmers[k] = v
-        print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
-        if len(kmers):
-            print("Significant k-mers:", len(kmers))
-            df_list[basename] = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
-            outfile = os.path.join(m_outputfolder, 'tsv', f"{basename}{np_string}_summary.tsv")
-            df_list[basename].to_csv(outfile, index=False, sep='\t')
-        else:
-            print(f"No significant k-mers found")
+    df_list = dict()
+    while(jobs):
+        ready,jobs = ray.wait(jobs)
+        if ready[0]:
+            basename,kmers = ray.get(ready[0])
+            df_list[basename] = kmers
+    if len(files_protein):
+        print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
+
     # Stacked Bar Plots (top kmer counts)
     if len(df_list):
+        print("Creating Protein Graphs")
+        ddf = dd.read_csv(os.path.join(m_outputfolder, 'tsv', "*_counts.tsv"), sep='\t')
+        start_time = timeit.default_timer()
         figPlots["Combined Protein kmer Summary"] = mercat2_report.kmer_summary(df_list)
+        print(f"Time to compute Combined Protein kmer Summary: {round(timeit.default_timer() - start_time,2)} seconds")
         if len(files_protein) > 3:
-            dfPCA = pd.DataFrame()
-            for name,df in df_list.items():
-                df = df.rename(columns=dict(Count=name))
-                dfPCA = dfPCA.merge(df, left_index=True, right_index=True, how="outer")
-            dfPCA = dfPCA.reset_index().rename(columns=dict(index="k-mer"))
-            figPlots["Protein PCA"] = mercat2_report.PCA_plot(dfPCA)
+            #dfPCA = pd.DataFrame()
+            #for name,df in df_list.items():
+            #    df = df.rename(columns=dict(Count=name))
+            #    dfPCA = dfPCA.merge(df, left_index=True, right_index=True, how="outer")
+            #dfPCA = dfPCA.reset_index().rename(columns=dict(index="k-mer"))
+            #figPlots["Protein PCA"] = mercat2_report.PCA_plot(dfPCA)
+            figPlots["Protein PCA"] = mercat2_report.PCA_plot(ddf)
     if len(files_protein):
         figPlots["Sample Protein Metrics Summary"],tsv_stats["Protein_Metrics"] = mercat2_report.plot_sample_metrics(files_protein)
     
