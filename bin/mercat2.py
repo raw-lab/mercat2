@@ -103,6 +103,75 @@ def chunk_files(name:str, file:str, chunk_size:int, outpath:str):
     return (name, all_chunks)
 
 
+## Create Figures
+#
+def createFigures(df_list:dict, type_string:str, out_path:os.PathLike):
+    print(f"Creating {type_string} Graphs")
+    figPlots = dict()
+    
+    if len(df_list) > 3:
+        #dfPCA = pd.DataFrame()
+        #for name,df in df_list.items():
+        #    df = df.rename(columns=dict(Count=name))
+        #    dfPCA = dfPCA.merge(df, left_index=True, right_index=True, how="outer")
+        #dfPCA = dfPCA.reset_index().rename(columns=dict(index="k-mer"))
+        #figPlots["Protein PCA"] = mercat2_report.PCA_plot(dfPCA)
+
+        # ddf = dd.read_csv(list(df_list.values()), sep='\t') #, names=['k-mer']+list(df_list.keys())
+        # print(ddf.compute())
+        # print("Divisions", ddf.divisions)
+        # ddf = ddf.groupby('k-mer').sum()
+        # print(ddf)
+        # ddf = ddf.set_index('k-mer', compute=True)
+        # print(ddf.compute())
+        # ddf.compute().to_csv(f'{m_outputfolder}/tsv/combined.tsv', sep='\t', index=True)
+        
+        start_time = timeit.default_timer()
+        names = sorted(list(df_list.keys()))
+        ddfPCA = dd.from_pandas(pd.DataFrame(), npartitions=len(df_list))
+        for name in names:
+            df = df_list[name]
+            ddfPCA = ddfPCA.merge(pd.read_csv(df, sep='\t', index_col=0), left_index=True, right_index=True, how="outer")
+        ddfPCA = ddfPCA.fillna(0).astype(int)
+        ddfPCA.compute().to_csv(f'{out_path}/tsv/combined.tsv', sep='\t', index=True)
+        print(f"Time to load TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
+        
+        # PCA
+        print("converting to array")
+        X = ddfPCA.to_dask_array(lengths=True).transpose()#.compute_chunk_sizes()
+
+        print("Running PCA")
+        import plotly.express as px
+        from dask_ml.decomposition import PCA
+        
+        pca = PCA(n_components=3, svd_solver='tsqr') # `svd_solver in ['randomized', 'tsqr', 'full']`
+        X_train = pca.fit_transform(X)
+
+        labels = {
+            str(i): f"PC {i+1} ({var:.1f}%)"
+            for i, var in enumerate(pca.explained_variance_ratio_ * 100)
+            }
+        print(f"Time to compute PCA: {round(timeit.default_timer() - start_time,2)} seconds")
+        print("Creating Figures")
+        figPCA = px.scatter_3d(
+            X_train, x=0, y=1, z=2, color=names,
+            labels=labels,
+            template="plotly_white"
+        )
+        figPCA.update_layout(font=dict(color="Black"),
+            margin=dict(l=0, r=0, t=0, b=0),)
+        figPCA.write_json(f"{out_path}/pca.json")
+        figPCA.write_image(f"{out_path}/pca.png")
+        figPlots[f"PCA {type_string}"] = figPCA
+        #figPlots[f"{type_string} PCA"] = mercat2_report.PCA_plot(ddfPCA)
+        print(f"Time to compute Figures: {round(timeit.default_timer() - start_time,2)} seconds")
+    # Stacked Bar Plots (top kmer counts)
+    start_time = timeit.default_timer()
+    #figPlots[f"Combined {type_string} kmer Summary"] = mercat2_report.kmer_summary(df_list)
+    print(f"Time to compute Combined {type_string} kmer Summary: {round(timeit.default_timer() - start_time,2)} seconds")
+    return figPlots
+
+
 ## Main
 #
 def mercat_main():
@@ -240,17 +309,22 @@ def mercat_main():
         #print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
         if len(kmers):
             print(f"Significant k-mers: {len(kmers)}")
-            df = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=['Count'])
+            #df = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=[f'{basename}_Count']).reset_index().rename(columns=dict(index='k-mer'))
             #out_gcc = os.path.join(m_outputfolder, 'tsv', f"{basename}{type_string}_summary.tsv")
             #dfGC = df.reset_index().rename(columns=dict(index='k-mer'))
             #dfGC['GC%'] = dfGC['k-mer'].apply(lambda k: round(100.0 * (k.count('G') + k.count('C')) / len(k), 2))
             #dfGC.to_csv(out_gcc, index=False, sep='\t')
             out_counts = os.path.join(m_outputfolder, 'tsv', f"{basename}{type_string}_counts.tsv")
-            df.to_csv(out_counts, index=True, sep='\t')
-            return basename,df #out_counts
+            with open(out_counts, 'w') as writer:
+                print('k-mer', f'{basename}_Count', sep='\t', file=writer)
+                for kmer,count in kmers.items():
+                    print(kmer, count, sep='\t', file=writer)
+            #df.to_csv(out_counts, index=False, sep='\t')
+            return basename,out_counts
         else:
             print(f"No significant k-mers found")
             return None
+
 
     ## Process Nucleotides ##
     if len(files_nucleotide):
@@ -260,7 +334,6 @@ def mercat_main():
     start_time = timeit.default_timer()
     for basename,files in files_nucleotide.items():
         jobs += [run_mercat2.remote(basename, files, '_nucleotide')]
-
     df_list = dict()
     while(jobs):
         ready,jobs = ray.wait(jobs)
@@ -269,18 +342,9 @@ def mercat_main():
             df_list[basename] = kmers
     if len(files_nucleotide):
         print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
-
     # Stacked Bar Plots (top kmer counts)
     if len(df_list):
-        print("Creating Nucleotide Graphs")
-        figPlots["Combined Nucleotide kmer Summary"] = mercat2_report.kmer_summary(df_list)
-        if len(files_nucleotide) > 3:
-            dfPCA = pd.DataFrame()
-            for name,df in df_list.items():
-                dfTemp = df.rename(columns=dict(Count=name))
-                dfPCA = dfPCA.merge(dfTemp, left_index=True, right_index=True, how="outer")
-            dfPCA = dfPCA.reset_index().rename(columns=dict(index="k-mer"))
-            figPlots["Nucleotide PCA"] = mercat2_report.PCA_plot(dfPCA)
+        figPlots.update(createFigures(df_list, "Nucleotide", m_outputfolder))
         if m_kmer >= 10:
             figPlots['k-mer GC Summary'] = mercat2_report.GC_plot_kmer(df_list)
     if len(gc_content) > 0:
@@ -295,7 +359,6 @@ def mercat_main():
     start_time = timeit.default_timer()
     for basename,files in files_protein.items():
         jobs += [run_mercat2.remote(basename, files, '_protein')]
-
     df_list = dict()
     while(jobs):
         ready,jobs = ray.wait(jobs)
@@ -304,24 +367,11 @@ def mercat_main():
             df_list[basename] = kmers
     if len(files_protein):
         print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
-
-    # Stacked Bar Plots (top kmer counts)
     if len(df_list):
-        print("Creating Protein Graphs")
-        ddf = dd.read_csv(os.path.join(m_outputfolder, 'tsv', "*_counts.tsv"), sep='\t')
-        start_time = timeit.default_timer()
-        figPlots["Combined Protein kmer Summary"] = mercat2_report.kmer_summary(df_list)
-        print(f"Time to compute Combined Protein kmer Summary: {round(timeit.default_timer() - start_time,2)} seconds")
-        if len(files_protein) > 3:
-            #dfPCA = pd.DataFrame()
-            #for name,df in df_list.items():
-            #    df = df.rename(columns=dict(Count=name))
-            #    dfPCA = dfPCA.merge(df, left_index=True, right_index=True, how="outer")
-            #dfPCA = dfPCA.reset_index().rename(columns=dict(index="k-mer"))
-            #figPlots["Protein PCA"] = mercat2_report.PCA_plot(dfPCA)
-            figPlots["Protein PCA"] = mercat2_report.PCA_plot(ddf)
+        figPlots.update(createFigures(df_list, "Protein", m_outputfolder))
     if len(files_protein):
         figPlots["Sample Protein Metrics Summary"],tsv_stats["Protein_Metrics"] = mercat2_report.plot_sample_metrics(files_protein)
+
     
     
     # Plot Data
