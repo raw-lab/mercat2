@@ -36,7 +36,8 @@ python install_mercat2.py
 
 ## Dependencies
 
-MerCat2 runs on python 3.6 up to version 3.9. Some of its dependencies do not support 3.10 yet.
+MerCat2 runs on python 3.6 up to version 3.9. </br>
+Some of its dependencies do not support 3.10 yet.
 
 ### external dependencies
 
@@ -126,7 +127,7 @@ mercat2.py -i /path/to/input-folder -k 3 -n 8 -c 10 -prod
 ## Notes on memory usage and speed
 
 MerCat2 uses a substantial amount of memory when the k-mer 4 is high.  
-Running MerCat2 on a personal computer using a k-mer length of ~4 should be OK. Total memory usage can be reduced using the Chunker feature (-s option), but keep in mind that in testing when the chunk size is too small (1MB) some of the least significant k-mers will get lost. This does not seem to affect the overall results, but it is something to keep in mind. Using the chunker and reducing the number of CPUs available (-n option) can help reduce memory requirements.  
+Running MerCat2 on a personal computer using a k-mer length of ~4 should be okay. Total memory usage can be reduced using the Chunker feature (-s option), but keep in mind that in testing when the chunk size is too small (1MB) some of the least significant k-mers will get lost. This does not seem to affect the overall results, but it is something to keep in mind. Using the chunker and reducing the number of CPUs available (-n option) can help reduce memory requirements.  
   
 The speed of MerCat2 can be increased when more memory or computer nodes are available on a cluster and using a chunk size of about 100Mb.
 
