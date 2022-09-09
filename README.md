@@ -46,11 +46,14 @@ MerCat2 can run without external dependencies based on the options used.
 Required dependencies:
 
 - When a raw read .fastq file is given
-  - fastqc [* fastqc](<https://www.bioinformatics.babraham.ac.uk/projects/fastqc/>) <br />
-  - fastp [https://github.com/OpenGene/fastp]
+  - [Fastqc](<https://www.bioinformatics.babraham.ac.uk/projects/fastqc/>) <br />
+  - [Fastp](<https://github.com/OpenGene/fastp>) 
 
-- when the -prod option is used
-  - prodigal [https://github.com/hyattpd/Prodigal]
+- For bacteria/archaea rich samples (-prod option)
+  - [Prodigal](<https://github.com/hyattpd/Prodigal>)
+
+- For eukaryote rich samples or general applications (-fgs option)
+  - [FragGeneScan Rust](<https://github.com/unipept/FragGeneScanRs>)
 
 These are available through BioConda.
 
