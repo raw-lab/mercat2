@@ -31,7 +31,7 @@ pip install mercat2
 ```bash
 git clone https://github.com/raw-lab/mercat2.git
 cd mercat2
-python install_mercat2.py
+bash install_mercat2.sh
 ```
 
 ## Dependencies
