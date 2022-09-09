@@ -46,7 +46,7 @@ MerCat2 can run without external dependencies based on the options used.
 Required dependencies:
 
 - When a raw read .fastq file is given
-  - fastqc [link][link: https://www.bioinformatics.babraham.ac.uk/projects/fastqc/] <br />
+  - fastqc [link][https://www.bioinformatics.babraham.ac.uk/projects/fastqc/] <br />
   - fastp [https://github.com/OpenGene/fastp]
 
 - when the -prod option is used
