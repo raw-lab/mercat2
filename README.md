@@ -137,6 +137,6 @@ If you are publishing results obtained using MerCat2, please cite:
 
 ### CONTACT
 
-Please send all queries to Jose Luis Figueroa III [mailto](mailto:jlfiguer@uncc.edu) 
-Dr. Richard Allen White III [mailto](mailto:rwhit101@uncc.edu)
+Please send all queries to Jose Luis Figueroa III [mailto](mailto:jlfiguer@uncc.edu) <br />
+Dr. Richard Allen White III [mailto](mailto:rwhit101@uncc.edu)<br />
 Or [open an issue](https://github.com/raw-lab/mercat2/issues)
