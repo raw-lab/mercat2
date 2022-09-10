@@ -3,6 +3,7 @@
 """
 
 import os
+import shutil
 import subprocess
 import re
 import textwrap
@@ -93,6 +94,18 @@ def removeN(fasta:str, outpath:str):
     return (os.path.abspath(outFasta), NStats)
 
 
+## Check Command
+#
+def check_command(cmd:str):
+    '''Checks if the command is available in PATH and executable'''
+
+    if shutil.which(cmd) is None:
+        print(f"Mercat Error: {cmd} not found, please setup {cmd} using: 'conda install {cmd}'")
+        return False
+    else:
+        return True
+
+
 ## Process Fastq
 def fastq_processing(fq_file:str, outpath:str, f_name:str):
     '''Processes fastq files.
@@ -113,14 +126,24 @@ def fastq_processing(fq_file:str, outpath:str, f_name:str):
     trim_fq = os.path.join(outpath, f_name+"_trim.fastq")
     trim_fna = os.path.join(outpath, f_name+"_trim.fna")
     
+    # Quality Check
     cmd_qc = f"fastqc {fq_file} -o {outpath}"
+    if check_command('fastqc'):
+        subprocess.run(['fastqc', fq_file, '-o', outpath], stdout=open(f'{outpath}/{f_name}-qc1.stdout', 'w'), stderr=open(f'{outpath}/{f_name}-qc1.stderr', 'w'))
+    
+    # Trim
     cmd_fastp = f"fastp -i {fq_file} -o {trim_fq}"
+    if check_command('fastp'):
+        subprocess.run(['fastp', '-i', fq_file, '-o', trim_fq], stdout=open(f'{outpath}/{f_name}-trim.stdout', 'w'), stderr=open(f'{outpath}/{f_name}-trim.stderr', 'w'))
+    
+    # Quality Check
     cmd_qc2 = f"fastqc {trim_fq} -o {outpath}"
+    if check_command('fastqc'):
+        subprocess.run(['fastqc', trim_fq, '-o', outpath], stdout=open(f'{outpath}/{f_name}-qc2.stdout', 'w'), stderr=open(f'{outpath}/{f_name}-qc2.stderr', 'w'))
+    
+    # convert fastq to fasta
     cmd_format = f"sed -n '1~4s/^@/>/p;2~4p' {trim_fq} > {trim_fna}"
-    subprocess.call(cmd_qc, shell=True)
-    subprocess.call(cmd_fastp, shell=True)
-    subprocess.call(cmd_qc2, shell=True)
-    subprocess.call(cmd_format, shell=True)
+    subprocess.run(['sed', '-n', '1~4s/^@/>/p;2~4p', trim_fq], stdout=open(trim_fna, 'w'))
     return os.path.abspath(trim_fna)
 
 
@@ -139,6 +162,9 @@ def orf_call(basename:str, file:str, outpath:str):
     Returns:
         tuple: A tuple with the name, and path to the protein faa file.
     '''
+
+    if not check_command('prodigal'):
+        exit()
 
     outpath = os.path.abspath(outpath)
     out_pro = os.path.join(outpath, basename+"_pro.faa")

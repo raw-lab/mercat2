@@ -168,3 +168,4 @@ def calculate_hydro(seq):
     for c in seq:
         if c in hydro_scores: hydro += hydro_scores[c]
     return round(hydro,2)
+
