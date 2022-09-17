@@ -53,7 +53,7 @@ Required dependencies:
   - [Prodigal](<https://github.com/hyattpd/Prodigal>)
 
 - For eukaryote rich samples or general applications (-fgs option)
-  - [FragGeneScan Rust](<https://github.com/unipept/FragGeneScanRs>)
+  - [FragGeneScanRs](<https://github.com/unipept/FragGeneScanRs>)
 
 These are available through BioConda.
 
