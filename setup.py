@@ -48,5 +48,6 @@ setuptools.setup(
         'psutil',
         'dominate',
         'scikit-learn',
+        'metaomestats',
     ]
 )

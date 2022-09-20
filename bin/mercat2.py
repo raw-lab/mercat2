@@ -11,12 +11,11 @@ import os
 import psutil
 from distutils.util import strtobool
 import ray
-from argparse import ArgumentParser
-from argparse import RawDescriptionHelpFormatter
+import argparse
 import timeit
 
 # Mercat libraries
-from mercat2_lib import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_report)
+from mercat2_lib import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_figures, mercat2_report)
 
 
 # GLOBAL VARIABLES
@@ -25,21 +24,29 @@ FILE_EXT_NUCLEOTIDE = [".fasta", ".fa", ".fna", ".ffn"]
 FILE_EXT_PROTEIN = [".faa"]
 
 
+# RAM Usage
+def mem_use():
+    return round(psutil.virtual_memory().used/1024.0**3, 2)
+
+
 ## Parse Arguments
 #
 def parseargs():
     '''Returns the parsed command line options.'''
     num_cores = psutil.cpu_count(logical=False)
-    parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-i', type=str, required=False, help='path-to-input-file') #default=nucleotide
     parser.add_argument('-f', type=str, required=False, help='path-to-folder-containing-input-files')
     parser.add_argument('-k', type=int, required = True, help='kmer length')
     parser.add_argument('-n', type=int, default=num_cores, help='no of cores [auto detect]')  # no of cores to use
     parser.add_argument('-c', type=int, default=10, help='minimum kmer count [10]')  # minimum kmer count to report
-    parser.add_argument('-prod', action='store_true', help='run prodigal on fasta file')
+    parser.add_argument('-prod', action='store_true', help='run prodigal on fasta files')
+    parser.add_argument('-fgs', action='store_true', help='run FragGeneScanRS on fasta files')
     parser.add_argument('-s', type=int, default=100, required=False, help='Split into x MB files. [100]')
     parser.add_argument('-o', type=str, default='mercat_results', required=False, help="Output folder, default = 'mercat_results' in current directory")
     parser.add_argument('-lowmem', type=strtobool, default=None, help="Flag to use incremental PCA when low memory is available. [auto]")
+    parser.add_argument('-no_metaomestats', action='store_true', help='run prodigal on fasta files')
+    parser.add_argument('-category_file', type=str, default=None, help=argparse.SUPPRESS)
 
 
     # Process arguments
@@ -92,24 +99,40 @@ def chunk_files(name:str, file:str, chunk_size:int, outpath:str):
 
 ## Create Figures
 #
-def createFigures(df_list:dict, type_string:str, out_path:os.PathLike, lowmem=None):
-    print(f"Creating {type_string} Graphs")
+def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=None, class_file=None):
+    print(f"\nCreating {type_string} Graphs")
+    print(f"Virtual Memory {mem_use()}GB")
+
     figPlots = dict()
     start_time = timeit.default_timer()
-    combined_tsv = f'{out_path}/combined_T.tsv'
-    if not os.path.exists(combined_tsv):
-        mercat2_report.merge_tsv_T(df_list, combined_tsv)
-    print(f"Time to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
-    
-    if len(df_list) > 3:
-        print("Running PCA")
-        figPlots[f"{type_string} PCA"] = mercat2_report.plot_PCA(combined_tsv, out_path, lowmem)
 
-    return figPlots
     # Stacked Bar Plots (top kmer counts)
-    start_time = timeit.default_timer()
-    #figPlots[f"Combined {type_string} kmer Summary"] = mercat2_report.kmer_summary(df_list)
+    combined_tsv = os.path.join(out_path, 'combined.tsv')
+    if not os.path.exists(combined_tsv):
+        mercat2_report.merge_tsv(tsv_list, combined_tsv)
+        print(f"\nTime to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
+        print(f"Virtual Memory {mem_use()}GB")
+    
+    figPlots[f"Combined {type_string} kmer Summary"] = mercat2_figures.kmer_summary(combined_tsv)
     print(f"Time to compute Combined {type_string} kmer Summary: {round(timeit.default_timer() - start_time,2)} seconds")
+    print(f"Virtual Memory {mem_use()}GB")
+
+    # PCA
+    if len(tsv_list) > 3:
+        print("\nRunning PCA")
+        print(f"Virtual Memory {mem_use()}GB")
+        start_time = timeit.default_timer()
+
+        combined_tsv = os.path.join(out_path, 'combined_T.tsv')
+        if not os.path.exists(combined_tsv):
+            mercat2_report.merge_tsv_T(tsv_list, combined_tsv)
+            print(f"\nTime to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Virtual Memory {mem_use()}GB")
+
+        figPlots[f"{type_string} PCA"] = mercat2_figures.plot_PCA(combined_tsv, out_path, lowmem, class_file)
+
+        print(f"Virtual Memory {mem_use()}GB")
+
     return figPlots
 
 
@@ -130,10 +153,13 @@ def mercat_main():
     m_chunk_size = __args__.s
     m_outputfolder = __args__.o
     m_lowmem = None if __args__.lowmem is None else bool(__args__.lowmem)
+    m_class_file = __args__.category_file
     
     #if os.path.exists(m_outputfolder) and os.path.isdir(m_outputfolder):
     #    shutil.rmtree(m_outputfolder)
     os.makedirs(m_outputfolder, exist_ok=True)
+
+    print(f"\nVirtual Memory {mem_use()}GB")
 
     # Initialize Ray
     try:
@@ -142,7 +168,6 @@ def mercat_main():
         ray.init(log_to_driver=False)
 
     # Load input files
-    all_ipfiles = []
     gc_content = dict()
     files_nucleotide = {}
     files_protein = {}
@@ -154,21 +179,19 @@ def mercat_main():
         for fname in os.listdir(m_inputfolder):
             file = os.path.join(m_inputfolder, fname)
             if not os.path.isdir(file):
-                # skip directories
                 basename, f_ext = os.path.splitext(fname)
                 if f_ext in FILE_EXT_FASTQ:
-                    file = mercat2_fasta.fastq_processing(file, cleanpath, basename)
-                    files_nucleotide[basename] = file
+                    files_nucleotide[basename] = mercat2_fasta.fastq_processing(file, cleanpath, basename)
                 elif f_ext in FILE_EXT_NUCLEOTIDE:
                     file,stat = mercat2_fasta.removeN(file, cleanpath)
                     files_nucleotide[basename] = file
                     gc_content[basename] = stat['GC Content']
+                    #TODO:MetaomeStats
                 elif f_ext in FILE_EXT_PROTEIN:
                     files_protein[basename] = file
-                all_ipfiles.append(file)
     else:
         basepath = os.path.abspath(os.path.expanduser(m_inputfile))
-        basename, f_ext = os.path.splitext(os.path.basename(basepath))
+        basename,f_ext = os.path.splitext(os.path.basename(basepath))
         if f_ext in FILE_EXT_FASTQ:
             m_inputfile = mercat2_fasta.fastq_processing(m_inputfile, cleanpath, basename)
             files_nucleotide[basename] = m_inputfile
@@ -176,13 +199,11 @@ def mercat_main():
             m_inputfile,stat = mercat2_fasta.removeN(m_inputfile, cleanpath)
             files_nucleotide[basename] = m_inputfile
             gc_content[basename] = stat['GC Content']
+            #TODO:MetaomeStats
         elif f_ext in FILE_EXT_PROTEIN:
             files_protein[basename] = m_inputfile
-        all_ipfiles.append(m_inputfile)
-        all_ipfiles.append(os.path.abspath(m_inputfile))
-    print(f"Time to load {len(all_ipfiles)} files: {round(timeit.default_timer() - start_time,2)} seconds")
+    print(f"Time to load {len(files_nucleotide)+len(files_protein)} files: {round(timeit.default_timer() - start_time,2)} seconds")
 
-    
     # ORF Call if -prod flag
     if m_flag_prodigal:
         @ray.remote(num_cpus=1)
@@ -251,16 +272,10 @@ def mercat_main():
         #print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
         if len(kmers):
             print(f"Significant k-mers: {len(kmers)}")
-            #df = pd.DataFrame(index=kmers.keys(), data=kmers.values(), columns=[f'{basename}_Count']).reset_index().rename(columns=dict(index='k-mer'))
-            #out_gcc = os.path.join(m_outputfolder, 'tsv', f"{basename}{type_string}_summary.tsv")
-            #dfGC = df.reset_index().rename(columns=dict(index='k-mer'))
-            #dfGC['GC%'] = dfGC['k-mer'].apply(lambda k: round(100.0 * (k.count('G') + k.count('C')) / len(k), 2))
-            #dfGC.to_csv(out_gcc, index=False, sep='\t')
             with open(out_file, 'w') as writer:
                 print('k-mer', f'{basename}_Count', sep='\t', file=writer)
                 for kmer,count in sorted(kmers.items()):
                     print(kmer, count, sep='\t', file=writer)
-            #df.to_csv(out_counts, index=False, sep='\t')
             return basename,out_file
         else:
             print(f"No significant k-mers found")
@@ -281,17 +296,17 @@ def mercat_main():
     while(jobs):
         ready,jobs = ray.wait(jobs)
         if ready[0]:
-            basename,kmers = ray.get(ready[0])
-            df_list[basename] = kmers
+            try:
+                basename,kmers = ray.get(ready[0])
+                df_list[basename] = kmers
+            except: pass
     if len(files_nucleotide):
         print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
     # Stacked Bar Plots (top kmer counts)
     if len(df_list):
-        figPlots.update(createFigures(df_list, "Nucleotide", m_outputfolder, m_lowmem))
-        #if m_kmer >= 10:
-        #    figPlots['k-mer GC Summary'] = mercat2_report.GC_plot_kmer(df_list)
+        figPlots.update(createFigures(df_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file))
     if len(gc_content) > 0:
-        figPlots['Sample GC Summary'] = mercat2_report.GC_plot_sample(gc_content)
+        figPlots['Sample GC Summary'] = mercat2_figures.GC_plot_sample(gc_content)
 
 
     ## Process Proteins ##
@@ -310,20 +325,23 @@ def mercat_main():
     while(jobs):
         ready,jobs = ray.wait(jobs)
         if ready[0]:
-            basename,kmers = ray.get(ready[0])
-            df_list[basename] = kmers
+            try:
+                basename,kmers = ray.get(ready[0])
+                df_list[basename] = kmers
+            except: pass
     if len(files_protein):
         print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
+        figPlots.update(mercat2_figures.plot_sample_metrics(files_protein, os.path.join(m_outputfolder, 'plots')))
     if len(df_list):
-        figPlots.update(createFigures(df_list, "Protein", m_outputfolder, m_lowmem))
-    #if len(files_protein):
-    #    figPlots["Sample Protein Metrics Summary"],tsv_stats["Protein_Metrics"] = mercat2_report.plot_sample_metrics(files_protein)
+        figPlots.update(createFigures(df_list, "Protein", m_outputfolder, m_lowmem, m_class_file))
 
     # Plot Data
     plots_dir = os.path.join(m_outputfolder, "plots")
     os.makedirs(plots_dir, exist_ok=True)
 
     mercat2_report.write_html(os.path.join(plots_dir, "report.html"), figPlots, tsv_stats)
+    figPlots = mercat2_figures.plot_sample_metrics(files_protein, os.path.join(m_outputfolder, 'plots'))
+    mercat2_report.write_html(os.path.join(plots_dir, "protein_metrics.html"), figPlots, dict())
     return
 
 
