@@ -3,7 +3,7 @@
 """
 
 import os
-from sys import platform
+import sys
 import pkg_resources as pkg
 import shutil
 import subprocess
@@ -11,7 +11,7 @@ import tarfile
 import re
 import textwrap
 
-PATH_FGS = pkg.resource_filename("mercat2", "FGS")
+PATH_FGS = pkg.resource_filename("mercat2_lib", "FGS")
 
 
 ## Split Sequence by N
@@ -198,29 +198,30 @@ def orf_call_fgs(basename:str, file:str, outpath:str):
         tuple: A tuple with the name, and path to the protein faa file.
     '''
 
-    # Setup FragGeneScanPlusRS
-    def setup_FGS():
-        system = platform.system()
+    exe_fgs = os.path.join(PATH_FGS, 'FragGeneScanRs')
+
+    if not os.path.exists(exe_fgs):
+        system = sys.platform
 
         if system == "Windows":
-            print("Windows is not supported with FGS+")
+            print("Windows is not supported with FragGeneScanRs")
             return None
 
         with tarfile.open(os.path.join(PATH_FGS, f'FragGeneScanRS-{system}.tar.gz'), 'r') as fgs:
             fgs.extractall(PATH_FGS)
         #subprocess.run(['tar', '-xzf', f'FragGeneScanRS-{system}.tar.gz'], cwd=pathFGS)
 
-        return os.path.join(PATH_FGS, 'FragGeneScanRS')
-
-    if not os.path.exists(os.path.join(PATH_FGS, 'FragGeneScanRs')):
-        setup_FGS()
-
     outpath = os.path.abspath(outpath)
-    out_pro = os.path.join(outpath, basename+"_pro.faa")
-    out_gff = os.path.join(outpath, basename+".gff")
-    out_nuc = os.path.join(outpath, basename+"_nuc.fna")
-    prod_cmd = f"{os.path.join(PATH_FGS, 'FragGeneScanRs')} -i {file} -o {out_gff} -a {out_pro} -f gff -p meta"
     os.makedirs(outpath, exist_ok=True)
-    with open(os.devnull, 'w') as FNULL:
-        subprocess.call(prod_cmd, stdout=FNULL, stderr=FNULL, shell=True)
-    return (basename, out_pro)
+    prefix = os.path.join(outpath, basename)
+
+    command = ['FragGeneScanRs',
+                '--complete',
+                '-s', file,
+                '-t', 'complete',
+                '-o', prefix,
+                ]
+
+    subprocess.run(command)
+
+    return (basename, f"{prefix}.faa")

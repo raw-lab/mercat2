@@ -8,15 +8,9 @@ import re
 import base64
 import pkg_resources as pkg
 import time
-import pandas as pd
-import plotly.graph_objs as go
-import plotly.express as px
-from sklearn.decomposition import PCA
-from sklearn.decomposition import IncrementalPCA as iPCA
 import dominate
 from dominate.tags import *
 from dominate.util import raw
-import timeit
 
 from mercat2_lib import mercat2_metrics
 

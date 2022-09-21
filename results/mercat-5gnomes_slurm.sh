@@ -31,7 +31,7 @@ pip install ~/raw-lab/mercat2
 
 export PYTHONUNBUFFERED=1
 
-command time mercat2.py -k 4 -f ../data/5_genomes -o "$SLURM_JOB_NAME" -prod
+command time mercat2.py -k 4 -f ../data/5_genomes -o "$SLURM_JOB_NAME" -fgs
 
 
 echo ""

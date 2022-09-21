@@ -4,7 +4,7 @@
 """mercat2.py: Python code for Parallel k-mer counting."""
 
 __version__     = "0.3"
-__author__      = "Jose L. Figueroa III, Richard A. White III"
+__author__      = "Jose L. Figueroa, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
 import os
@@ -15,7 +15,7 @@ import argparse
 import timeit
 
 # Mercat libraries
-from mercat2_lib import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_figures, mercat2_report)
+from mercat2_lib import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_diversity, mercat2_figures, mercat2_report)
 
 
 # GLOBAL VARIABLES
@@ -40,14 +40,13 @@ def parseargs():
     parser.add_argument('-k', type=int, required = True, help='kmer length')
     parser.add_argument('-n', type=int, default=num_cores, help='no of cores [auto detect]')  # no of cores to use
     parser.add_argument('-c', type=int, default=10, help='minimum kmer count [10]')  # minimum kmer count to report
-    parser.add_argument('-prod', action='store_true', help='run prodigal on fasta files')
+    parser.add_argument('-prod', action='store_true', help='run Prodigal on fasta files')
     parser.add_argument('-fgs', action='store_true', help='run FragGeneScanRS on fasta files')
     parser.add_argument('-s', type=int, default=100, required=False, help='Split into x MB files. [100]')
     parser.add_argument('-o', type=str, default='mercat_results', required=False, help="Output folder, default = 'mercat_results' in current directory")
     parser.add_argument('-lowmem', type=strtobool, default=None, help="Flag to use incremental PCA when low memory is available. [auto]")
     parser.add_argument('-no_metaomestats', action='store_true', help='run prodigal on fasta files')
     parser.add_argument('-category_file', type=str, default=None, help=argparse.SUPPRESS)
-
 
     # Process arguments
     args = parser.parse_args()
@@ -150,6 +149,7 @@ def mercat_main():
     m_inputfolder = __args__.f
     m_min_count = __args__.c
     m_flag_prodigal = __args__.prod
+    m_flag_fgs = __args__.fgs
     m_chunk_size = __args__.s
     m_outputfolder = __args__.o
     m_lowmem = None if __args__.lowmem is None else bool(__args__.lowmem)
@@ -157,6 +157,8 @@ def mercat_main():
     
     #if os.path.exists(m_outputfolder) and os.path.isdir(m_outputfolder):
     #    shutil.rmtree(m_outputfolder)
+    if not m_outputfolder:
+        m_outputfolder = 'mercat_results'
     os.makedirs(m_outputfolder, exist_ok=True)
 
     print(f"\nVirtual Memory {mem_use()}GB")
@@ -210,7 +212,7 @@ def mercat_main():
         def orf_call(basename, file, prodpath):
             return mercat2_fasta.orf_call(basename, file, prodpath)
 
-        print(f"Running prodigal on {len(files_nucleotide)} files")
+        print(f"Running Prodigal on {len(files_nucleotide)} files")
         prodpath = os.path.join(m_outputfolder, 'prodigal')
         jobs = []
         for basename,file in files_nucleotide.items():
@@ -220,6 +222,22 @@ def mercat_main():
             name,amino = ray.get(ready[0])
             files_protein[name] = amino
 
+    # ORF Call if -fgs flag
+    if m_flag_fgs:
+        @ray.remote(num_cpus=1)
+        def orf_call_fgs(basename, file, prodpath):
+            return mercat2_fasta.orf_call_fgs(basename, file, outpath)
+
+        print(f"Running FragGeneScanRS on {len(files_nucleotide)} files")
+        outpath = os.path.join(m_outputfolder, 'fgs')
+        jobs = []
+        for basename,file in files_nucleotide.items():
+            jobs += [orf_call_fgs.remote(basename, file, outpath)]
+        while jobs:
+            ready,jobs = ray.wait(jobs)
+            ret = ray.get(ready[0])
+            if ret:
+                files_protein[ret[0]] = ret[1]
 
     # Chunk large files
     if m_chunk_size > 0:
@@ -331,17 +349,29 @@ def mercat_main():
             except: pass
     if len(files_protein):
         print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
-        figPlots.update(mercat2_figures.plot_sample_metrics(files_protein, os.path.join(m_outputfolder, 'plots')))
     if len(df_list):
         figPlots.update(createFigures(df_list, "Protein", m_outputfolder, m_lowmem, m_class_file))
 
     # Plot Data
-    plots_dir = os.path.join(m_outputfolder, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
+    report_dir = os.path.join(m_outputfolder, "report")
+    os.makedirs(report_dir, exist_ok=True)
 
-    mercat2_report.write_html(os.path.join(plots_dir, "report.html"), figPlots, tsv_stats)
-    figPlots = mercat2_figures.plot_sample_metrics(files_protein, os.path.join(m_outputfolder, 'plots'))
-    mercat2_report.write_html(os.path.join(plots_dir, "protein_metrics.html"), figPlots, dict())
+    @ray.remote(num_cpus=1)
+    def diversity(infile, outfile):
+        mercat2_diversity.compute_alpha_beta_diversity(infile, outfile)
+        return
+    jobs = list()
+    for filename in os.listdir(os.path.join(m_outputfolder, 'tsv')):
+        if not filename.endswith('.tsv'):
+            continue
+        jobs += [diversity.remote(os.path.join(m_outputfolder, 'tsv', filename), os.path.join(report_dir, f'diversity-{filename}'))]
+
+    while jobs:
+        ready,jobs = ray.wait(jobs)
+
+    mercat2_report.write_html(os.path.join(report_dir, "report.html"), figPlots, tsv_stats)
+    figPlots = mercat2_figures.plot_sample_metrics(files_protein, report_dir)
+    mercat2_report.write_html(os.path.join(report_dir, "protein_metrics.html"), figPlots, dict())
     return
 
 

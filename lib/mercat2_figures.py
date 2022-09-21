@@ -7,13 +7,11 @@ import psutil
 import re
 import base64
 import pkg_resources as pkg
-import time
 import pandas as pd
 import plotly.graph_objs as go
 import plotly.express as px
 from sklearn.decomposition import PCA
 from sklearn.decomposition import IncrementalPCA as iPCA
-import dominate
 from dominate.tags import *
 from dominate.util import raw
 import timeit
@@ -182,25 +180,25 @@ def plot_sample_metrics(protein_samples: dict, outpath):
                         continue #already got next line, next item in loop
                     line = reader.readline()
 
-#            dfMetrics.sort_values(by='Length', ascending=False, inplace=True)
-#            dfMetrics.to_csv(tsv_out, sep='\t', mode='a', index=True, header=False)
-#
-#            figures[f"{basename}_PI"] = px.bar(dfMetrics, x='Length', y='PI', template="plotly_white",)
-#                #labels={'index':'Sample'})
-#            figures[f"{basename}_PI"].update_layout(font=dict(color="Black"))
-#
-#            figures[f"{basename}_MW"] = px.bar(dfMetrics, x='Length', y='MW', template="plotly_white",)
-#                #labels={'index':'Sample'})
-#            figures[f"{basename}_MW"].update_layout(font=dict(color="Black"))
-#
-#            figures[f"{basename}_Hydro"] = px.bar(dfMetrics, x='Length', y='Hydro', template="plotly_white",)
-#                #labels={'index':'Sample'})
-#            figures[f"{basename}_Hydro"].update_layout(font=dict(color="Black"))
+            dfMetrics.sort_values(by='Length', ascending=False, inplace=True)
+            dfMetrics.to_csv(tsv_out, sep='\t', mode='a', index=True, header=False)
 
-            dfMetrics = dfMetrics.melt(id_vars=['Name','Length'], var_name='Metric', value_name='Value')
-            figures[f"{basename}_Metrics"] = px.bar(dfMetrics, x='Length', y='Value', facet_row='Metric', template="plotly_white")
-            figures[f"{basename}_Metrics"].update_yaxes(matches=None)
-            figures[f"{basename}_Metrics"].update_layout(font=dict(color="Black"))
+            figures[f"{basename}_PI"] = px.bar(dfMetrics, x='Length', y='PI', template="plotly_white",)
+                #labels={'index':'Sample'})
+            figures[f"{basename}_PI"].update_layout(font=dict(color="Black"))
+
+            figures[f"{basename}_MW"] = px.bar(dfMetrics, x='Length', y='MW', template="plotly_white",)
+                #labels={'index':'Sample'})
+            figures[f"{basename}_MW"].update_layout(font=dict(color="Black"))
+
+            figures[f"{basename}_Hydro"] = px.bar(dfMetrics, x='Length', y='Hydro', template="plotly_white",)
+                #labels={'index':'Sample'})
+            figures[f"{basename}_Hydro"].update_layout(font=dict(color="Black"))
+
+#            dfMetrics = dfMetrics.melt(id_vars=['Name','Length'], var_name='Metric', value_name='Value')
+#            figures[f"{basename}_Metrics"] = px.bar(dfMetrics, x='Length', y='Value', facet_row='Metric', template="plotly_white")
+#            figures[f"{basename}_Metrics"].update_yaxes(matches=None)
+#            figures[f"{basename}_Metrics"].update_layout(font=dict(color="Black"))
 
     return figures
 
