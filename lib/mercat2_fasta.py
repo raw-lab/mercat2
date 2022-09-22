@@ -112,44 +112,62 @@ def check_command(cmd:str):
 
 
 ## Process Fastq
-def fastq_processing(fq_file:str, outpath:str, f_name:str):
+def qc(fq_file:str, outpath:str, f_name:str):
     '''Processes fastq files.
     Uses fastqc to get the quality of the reads.
-    Uses fastp to trim the reads.
-    Uses Linux sed command to convert the fastq file to fasta format.
 
     Parameters:
         fq_file (str): The path to a fastq file.
-        outpath (str): The path to save the fastqc report, trimmed fastq file, and fasta file.
+        outpath (str): The path to save the fastqc report.
         f_name (str): The name of the sample.
 
     Returns:
-        str: The absolute path to the final trimmed fasta file.
+        None
+    '''
+
+    os.makedirs(outpath, exist_ok=True)
+    if check_command('fastqc'):
+        subprocess.run(['fastqc', fq_file, '-o', outpath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return
+
+def trim(fq_file:str, outpath:str, f_name:str):
+    '''Processes fastq files.
+    Uses fastp to trim the reads.
+
+    Parameters:
+        fq_file (str): The path to a fastq file.
+        outpath (str): The path to save the trimmed fastq file.
+        f_name (str): The name of the sample.
+
+    Returns:
+        str: The path to the trimmed fasta file.
     '''
 
     os.makedirs(outpath, exist_ok=True)
     trim_fq = os.path.join(outpath, f_name+"_trim.fastq")
-    trim_fna = os.path.join(outpath, f_name+"_trim.fna")
-    
-    # Quality Check
-    cmd_qc = f"fastqc {fq_file} -o {outpath}"
-    if check_command('fastqc'):
-        subprocess.run(['fastqc', fq_file, '-o', outpath], stdout=open(f'{outpath}/{f_name}-qc1.stdout', 'w'), stderr=open(f'{outpath}/{f_name}-qc1.stderr', 'w'))
-    
-    # Trim
-    cmd_fastp = f"fastp -i {fq_file} -o {trim_fq}"
     if check_command('fastp'):
         subprocess.run(['fastp', '-i', fq_file, '-o', trim_fq], stdout=open(f'{outpath}/{f_name}-trim.stdout', 'w'), stderr=open(f'{outpath}/{f_name}-trim.stderr', 'w'))
-    
-    # Quality Check
-    cmd_qc2 = f"fastqc {trim_fq} -o {outpath}"
-    if check_command('fastqc'):
-        subprocess.run(['fastqc', trim_fq, '-o', outpath], stdout=open(f'{outpath}/{f_name}-qc2.stdout', 'w'), stderr=open(f'{outpath}/{f_name}-qc2.stderr', 'w'))
-    
+    return trim_fq
+
+def fq2fa(fq_file:str, outpath:str, f_name:str):
+    '''Processes fastq files.
+    Uses Linux sed command to convert the fastq file to fasta format.
+
+    Parameters:
+        fq_file (str): The path to a fastq file.
+        outpath (str): The path to save the  fasta file.
+        f_name (str): The name of the sample.
+
+    Returns:
+        str: The path to the converted fasta file.
+    '''
+
+    os.makedirs(outpath, exist_ok=True)
+    fna_file = os.path.join(outpath, f_name+"_trim.fna")
+
     # convert fastq to fasta
-    cmd_format = f"sed -n '1~4s/^@/>/p;2~4p' {trim_fq} > {trim_fna}"
-    subprocess.run(['sed', '-n', '1~4s/^@/>/p;2~4p', trim_fq], stdout=open(trim_fna, 'w'))
-    return os.path.abspath(trim_fna)
+    subprocess.run(['sed', '-n', '1~4s/^@/>/p;2~4p', fq_file], stdout=open(fna_file, 'w'))
+    return os.path.abspath(fna_file)
 
 
 ## ORF Call Prodigal

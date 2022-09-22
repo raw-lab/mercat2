@@ -176,35 +176,62 @@ def mercat_main():
     cleanpath = os.path.join(m_outputfolder, 'clean')
     print("Loading files")
     start_time = timeit.default_timer()
+    jobsQC = list()
+    jobsFastq = list()
+    jobsContig = list()
     if m_inputfolder:
         m_inputfolder = os.path.abspath(os.path.expanduser(m_inputfolder))
+        @ray.remote(num_cpus=1)
+        def fastq_qc(file, cleanpath, basename):
+            return (basename, mercat2_fasta.qc(file, cleanpath, basename))
+        @ray.remote(num_cpus=1)
+        def fastq_to_fasta(file, cleanpath, basename):
+            jobsQC = list()
+            jobsQC += [fastq_qc.remote(file, cleanpath, basename)]
+            trimmed = mercat2_fasta.trim(file, cleanpath, basename)
+            jobsQC += [fastq_qc.remote(trimmed, cleanpath, basename)]
+            return (basename, mercat2_fasta.fq2fa(trimmed, cleanpath, basename), jobsQC)
+        @ray.remote(num_cpus=1)
+        def clean_contig(file, cleanpath, basename):
+            file,stat = mercat2_fasta.removeN(file, cleanpath)
+            return (basename, file, stat)
         for fname in os.listdir(m_inputfolder):
             file = os.path.join(m_inputfolder, fname)
             if not os.path.isdir(file):
                 basename, f_ext = os.path.splitext(fname)
                 if f_ext in FILE_EXT_FASTQ:
-                    files_nucleotide[basename] = mercat2_fasta.fastq_processing(file, cleanpath, basename)
+                    jobsFastq += [fastq_to_fasta.remote(file, cleanpath, basename)]
                 elif f_ext in FILE_EXT_NUCLEOTIDE:
-                    file,stat = mercat2_fasta.removeN(file, cleanpath)
-                    files_nucleotide[basename] = file
-                    gc_content[basename] = stat['GC Content']
-                    #TODO:MetaomeStats
+                    jobsContig += [clean_contig.remote(file, cleanpath, basename)]
+                    ##TODO:MetaomeStats
                 elif f_ext in FILE_EXT_PROTEIN:
                     files_protein[basename] = file
     else:
         basepath = os.path.abspath(os.path.expanduser(m_inputfile))
         basename,f_ext = os.path.splitext(os.path.basename(basepath))
         if f_ext in FILE_EXT_FASTQ:
-            m_inputfile = mercat2_fasta.fastq_processing(m_inputfile, cleanpath, basename)
-            files_nucleotide[basename] = m_inputfile
+            jobsFastq += [fastq_to_fasta.remote(m_inputfile, cleanpath, basename)]
         elif f_ext in FILE_EXT_NUCLEOTIDE:
-            m_inputfile,stat = mercat2_fasta.removeN(m_inputfile, cleanpath)
-            files_nucleotide[basename] = m_inputfile
-            gc_content[basename] = stat['GC Content']
+            jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename)]
             #TODO:MetaomeStats
         elif f_ext in FILE_EXT_PROTEIN:
             files_protein[basename] = m_inputfile
+
+    # Wait for jobs
+    while jobsFastq:
+        ready,jobsFastq = ray.wait(jobsFastq)
+        basename,file,jobsqc = ray.get(ready[0])
+        files_nucleotide[basename] = file
+        jobsQC += jobsqc
+        #gc_content[basename] = stat['GC Content']
+    while jobsContig:
+        ready,jobsContig = ray.wait(jobsContig)
+        basename,file,stat = ray.get(ready[0])
+        files_nucleotide[basename] = file
+        gc_content[basename] = stat['GC Content']
+
     print(f"Time to load {len(files_nucleotide)+len(files_protein)} files: {round(timeit.default_timer() - start_time,2)} seconds")
+    print(f"{len(jobsQC)} jobs in jobsQC")
 
     # ORF Call if -prod flag
     if m_flag_prodigal:
@@ -365,9 +392,14 @@ def mercat_main():
         if not filename.endswith('.tsv'):
             continue
         jobs += [diversity.remote(os.path.join(m_outputfolder, 'tsv', filename), os.path.join(report_dir, f'diversity-{filename}'))]
-
     while jobs:
         ready,jobs = ray.wait(jobs)
+
+    # Wait for any remaining QC Jobs
+    print("Waiting for any remaining QC jobs")
+    while jobsQC:
+        ready,jobsQC = ray.wait(jobsQC)
+        ray.get(ready[0])
 
     mercat2_report.write_html(os.path.join(report_dir, "report.html"), figPlots, tsv_stats)
     figPlots = mercat2_figures.plot_sample_metrics(files_protein, report_dir)
