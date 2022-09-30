@@ -152,7 +152,6 @@ def plot_sample_metrics(protein_samples: dict, outpath):
 
     figures = dict()
     for basename,files in protein_samples.items():
-        prot_count = 0
         for file in files:
             dfMetrics = pd.DataFrame()
             with open(file) as reader:
@@ -171,12 +170,14 @@ def plot_sample_metrics(protein_samples: dict, outpath):
                                 break
                             sequence += line
                             line = reader.readline()
-                        prot_count += 1
-                        dfMetrics.at[name, 'Name'] = name.split()[0]
-                        dfMetrics.at[name, 'Length'] = len(sequence)
-                        dfMetrics.at[name, 'PI'] = mercat2_metrics.predict_isoelectric_point_ProMoST(sequence)
-                        dfMetrics.at[name, 'MW'] = mercat2_metrics.calculate_MW(sequence)
-                        dfMetrics.at[name, 'Hydro'] = mercat2_metrics.calculate_hydro(sequence)
+                        if len(sequence):
+                            dfMetrics.at[name, 'Name'] = name.split()[0]
+                            dfMetrics.at[name, 'Length'] = len(sequence)
+                            dfMetrics.at[name, 'PI'] = mercat2_metrics.predict_isoelectric_point_ProMoST(sequence)
+                            dfMetrics.at[name, 'MW'] = mercat2_metrics.calculate_MW(sequence)
+                            dfMetrics.at[name, 'Hydro'] = mercat2_metrics.calculate_hydro(sequence)
+                        else:
+                            print("WARNING: Empty Sequence:", basename, name, sequence)
                         continue #already got next line, next item in loop
                     line = reader.readline()
 
@@ -184,15 +185,12 @@ def plot_sample_metrics(protein_samples: dict, outpath):
             dfMetrics.to_csv(tsv_out, sep='\t', mode='a', index=True, header=False)
 
             figures[f"{basename}_PI"] = px.bar(dfMetrics, x='Length', y='PI', template="plotly_white",)
-                #labels={'index':'Sample'})
             figures[f"{basename}_PI"].update_layout(font=dict(color="Black"))
 
             figures[f"{basename}_MW"] = px.bar(dfMetrics, x='Length', y='MW', template="plotly_white",)
-                #labels={'index':'Sample'})
             figures[f"{basename}_MW"].update_layout(font=dict(color="Black"))
 
             figures[f"{basename}_Hydro"] = px.bar(dfMetrics, x='Length', y='Hydro', template="plotly_white",)
-                #labels={'index':'Sample'})
             figures[f"{basename}_Hydro"].update_layout(font=dict(color="Black"))
 
 #            dfMetrics = dfMetrics.melt(id_vars=['Name','Length'], var_name='Metric', value_name='Value')
@@ -284,10 +282,8 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
     if class_file:
         df_tax = pd.read_csv(class_file, sep='\t', index_col=0, names=['class'])
         XDF['class'] = XDF.index.map(df_tax['class']).fillna('NA')
-        #XDF.sort_values(by=['class'], inplace=True, key=lambda x: x.str.lower())
         color_col = 'class'
     else:
-        #XDF = XDF.reset_index().sort_values('sample', key=lambda x: x.str.lower())
         color_col = names
 
     # Plotly PCA

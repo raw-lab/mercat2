@@ -67,8 +67,7 @@ def removeN(fasta:str, outpath:str):
     NStats = dict()
     gc_count = 0
     total_length = 0
-    with open(fasta) as reader, open(outFasta, 'w') as writer:
-        line = reader.readline()
+    with open(fasta, 'r') as reader, open(outFasta, 'w') as writer:
         while line:
             line = line.strip()
             if line.startswith('>'):
@@ -163,7 +162,7 @@ def fq2fa(fq_file:str, outpath:str, f_name:str):
     '''
 
     os.makedirs(outpath, exist_ok=True)
-    fna_file = os.path.join(outpath, f_name+"_trim.fna")
+    fna_file = os.path.join(outpath, f_name+".fna")
 
     # convert fastq to fasta
     subprocess.run(['sed', '-n', '1~4s/^@/>/p;2~4p', fq_file], stdout=open(fna_file, 'w'))
@@ -191,12 +190,17 @@ def orf_call(basename:str, file:str, outpath:str):
 
     outpath = os.path.abspath(outpath)
     out_pro = os.path.join(outpath, basename+"_pro.faa")
-    out_gff = os.path.join(outpath, basename+".gff")
-    out_nuc = os.path.join(outpath, basename+"_nuc.fna")
-    prod_cmd = f"prodigal -i {file} -o {out_gff} -a {out_pro} -f gff -p meta"
+    #out_gff = os.path.join(outpath, basename+".gff")
+    #out_nuc = os.path.join(outpath, basename+"_nuc.fna")
+    #prod_cmd = f"prodigal -i {file} -o {out_gff} -a {out_pro} -f gff -p meta"
+    prod_cmd = ['prodigal',
+                '-i', file,
+                '-a', out_pro,
+                #'-o', out_gff,
+                #'-f', 'gff',
+                '-p', 'meta']
     os.makedirs(outpath, exist_ok=True)
-    with open(os.devnull, 'w') as FNULL:
-        subprocess.call(prod_cmd, stdout=FNULL, stderr=FNULL, shell=True)
+    subprocess.run(prod_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
     return (basename, out_pro)
 
 
@@ -227,19 +231,22 @@ def orf_call_fgs(basename:str, file:str, outpath:str):
 
         with tarfile.open(os.path.join(PATH_FGS, f'FragGeneScanRS-{system}.tar.gz'), 'r') as fgs:
             fgs.extractall(PATH_FGS)
-        #subprocess.run(['tar', '-xzf', f'FragGeneScanRS-{system}.tar.gz'], cwd=pathFGS)
 
     outpath = os.path.abspath(outpath)
     os.makedirs(outpath, exist_ok=True)
-    prefix = os.path.join(outpath, basename)
+    #prefix = os.path.join(outpath, basename)
+    prefix = os.path.join(outpath, f'{basename}.faa')
 
     command = ['FragGeneScanRs',
                 '--complete',
                 '-s', file,
                 '-t', 'complete',
-                '-o', prefix,
+                '-a', prefix,
+                #'-o', prefix,
+                #'-g', '/dev/null'
+                #'-m', '/dev/null',
                 ]
 
     subprocess.run(command)
 
-    return (basename, f"{prefix}.faa")
+    return (basename, f"{prefix}")

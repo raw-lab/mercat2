@@ -8,6 +8,7 @@ __author__      = "Jose L. Figueroa, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
 import os
+import shutil
 import psutil
 from distutils.util import strtobool
 import ray
@@ -45,7 +46,7 @@ def parseargs():
     parser.add_argument('-s', type=int, default=100, required=False, help='Split into x MB files. [100]')
     parser.add_argument('-o', type=str, default='mercat_results', required=False, help="Output folder, default = 'mercat_results' in current directory")
     parser.add_argument('-lowmem', type=strtobool, default=None, help="Flag to use incremental PCA when low memory is available. [auto]")
-    parser.add_argument('-no_metaomestats', action='store_true', help='run prodigal on fasta files')
+    parser.add_argument('-skipclean', action='store_true', help='skip trimming of fastq files')
     parser.add_argument('-category_file', type=str, default=None, help=argparse.SUPPRESS)
 
     # Process arguments
@@ -153,6 +154,7 @@ def mercat_main():
     m_chunk_size = __args__.s
     m_outputfolder = __args__.o
     m_lowmem = None if __args__.lowmem is None else bool(__args__.lowmem)
+    m_skipclean = __args__.skipclean
     m_class_file = __args__.category_file
     
     #if os.path.exists(m_outputfolder) and os.path.isdir(m_outputfolder):
@@ -163,11 +165,7 @@ def mercat_main():
 
     print(f"\nVirtual Memory {mem_use()}GB")
 
-    # Initialize Ray
-    try:
-        ray.init(address='auto', log_to_driver=False) # First try if ray is setup for a cluster
-    except:
-        ray.init(log_to_driver=False)
+    ray.init(num_cpus=m_num_cores, log_to_driver=False)
 
     # Load input files
     gc_content = dict()
@@ -185,12 +183,12 @@ def mercat_main():
         def fastq_qc(file, cleanpath, basename):
             return (basename, mercat2_fasta.qc(file, cleanpath, basename))
         @ray.remote(num_cpus=1)
-        def fastq_to_fasta(file, cleanpath, basename):
-            jobsQC = list()
-            jobsQC += [fastq_qc.remote(file, cleanpath, basename)]
-            trimmed = mercat2_fasta.trim(file, cleanpath, basename)
-            jobsQC += [fastq_qc.remote(trimmed, cleanpath, basename)]
-            return (basename, mercat2_fasta.fq2fa(trimmed, cleanpath, basename), jobsQC)
+        def fastq_to_fasta(file, cleanpath, basename, skiptrim:bool):
+            jobsQC = [fastq_qc.remote(file, cleanpath, basename)]
+            if not skiptrim:
+                file = mercat2_fasta.trim(file, cleanpath, basename)
+                jobsQC += [fastq_qc.remote(file, cleanpath, basename)]
+            return (basename, mercat2_fasta.fq2fa(file, cleanpath, basename), jobsQC)
         @ray.remote(num_cpus=1)
         def clean_contig(file, cleanpath, basename):
             file,stat = mercat2_fasta.removeN(file, cleanpath)
@@ -200,7 +198,7 @@ def mercat_main():
             if not os.path.isdir(file):
                 basename, f_ext = os.path.splitext(fname)
                 if f_ext in FILE_EXT_FASTQ:
-                    jobsFastq += [fastq_to_fasta.remote(file, cleanpath, basename)]
+                    jobsFastq += [fastq_to_fasta.remote(file, cleanpath, basename, m_skipclean)]
                 elif f_ext in FILE_EXT_NUCLEOTIDE:
                     jobsContig += [clean_contig.remote(file, cleanpath, basename)]
                     ##TODO:MetaomeStats
@@ -210,7 +208,7 @@ def mercat_main():
         basepath = os.path.abspath(os.path.expanduser(m_inputfile))
         basename,f_ext = os.path.splitext(os.path.basename(basepath))
         if f_ext in FILE_EXT_FASTQ:
-            jobsFastq += [fastq_to_fasta.remote(m_inputfile, cleanpath, basename)]
+            jobsFastq += [fastq_to_fasta.remote(m_inputfile, cleanpath, basename, m_skipclean)]
         elif f_ext in FILE_EXT_NUCLEOTIDE:
             jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename)]
             #TODO:MetaomeStats
@@ -231,44 +229,11 @@ def mercat_main():
         gc_content[basename] = stat['GC Content']
 
     print(f"Time to load {len(files_nucleotide)+len(files_protein)} files: {round(timeit.default_timer() - start_time,2)} seconds")
-    print(f"{len(jobsQC)} jobs in jobsQC")
+    start_time = timeit.default_timer()
 
-    # ORF Call if -prod flag
-    if m_flag_prodigal:
-        @ray.remote(num_cpus=1)
-        def orf_call(basename, file, prodpath):
-            return mercat2_fasta.orf_call(basename, file, prodpath)
-
-        print(f"Running Prodigal on {len(files_nucleotide)} files")
-        prodpath = os.path.join(m_outputfolder, 'prodigal')
-        jobs = []
-        for basename,file in files_nucleotide.items():
-            jobs += [orf_call.remote(basename, file, prodpath)]
-        while jobs:
-            ready,jobs = ray.wait(jobs)
-            name,amino = ray.get(ready[0])
-            files_protein[name] = amino
-
-    # ORF Call if -fgs flag
-    if m_flag_fgs:
-        @ray.remote(num_cpus=1)
-        def orf_call_fgs(basename, file, prodpath):
-            return mercat2_fasta.orf_call_fgs(basename, file, outpath)
-
-        print(f"Running FragGeneScanRS on {len(files_nucleotide)} files")
-        outpath = os.path.join(m_outputfolder, 'fgs')
-        jobs = []
-        for basename,file in files_nucleotide.items():
-            jobs += [orf_call_fgs.remote(basename, file, outpath)]
-        while jobs:
-            ready,jobs = ray.wait(jobs)
-            ret = ray.get(ready[0])
-            if ret:
-                files_protein[ret[0]] = ret[1]
-
-    # Chunk large files
+    # Chunk Nucleotides
     if m_chunk_size > 0:
-        print("Checking for large files")
+        print("Checking for large nucleotide files")
         start_time = timeit.default_timer()
         dir_chunks = os.path.join(m_outputfolder, "chunks")
         # nucleotides
@@ -280,16 +245,10 @@ def mercat_main():
             ready,jobs = ray.wait(jobs)
             name,chunks = ray.get(ready[0])
             files_nucleotide[name] = chunks
-        # proteins
-        jobs = []
-        for basename,file in files_protein.items():
-            chunk_path = os.path.join(dir_chunks, f"{basename}_protein")
-            jobs += [chunk_files.remote(basename, file, m_chunk_size, chunk_path)]
-        while jobs:
-            ready,jobs = ray.wait(jobs)
-            name,chunks = ray.get(ready[0])
-            files_protein[name] = chunks
-    print(f"Time to check for large files: {round(timeit.default_timer() - start_time,2)} seconds")
+        print(f"Time to check for large files: {round(timeit.default_timer() - start_time,2)} seconds")
+    else:
+        for basename,file in files_nucleotide.items():
+            files_nucleotide[basename] = [file]
 
     # Begin processing files
     figPlots = dict()
@@ -299,10 +258,8 @@ def mercat_main():
     @ray.remote(num_cpus=1)
     def countKmers(file):
         return mercat2_kmers.find_kmers(file, m_kmer, m_min_count, m_num_cores)
-
     @ray.remote(num_cpus=1)
     def run_mercat2(basename:str, files:list, out_file:os.PathLike):
-        #start_time = timeit.default_timer()
         kmers = dict()
         jobs = []
         for file in files:
@@ -314,7 +271,6 @@ def mercat_main():
                     kmers[k] += v
                 else:
                     kmers[k] = v
-        #print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} secs")
         if len(kmers):
             print(f"Significant k-mers: {len(kmers)}")
             with open(out_file, 'w') as writer:
@@ -340,11 +296,10 @@ def mercat_main():
     df_list = dict()
     while(jobs):
         ready,jobs = ray.wait(jobs)
-        if ready[0]:
-            try:
-                basename,kmers = ray.get(ready[0])
-                df_list[basename] = kmers
-            except: pass
+        try:
+            basename,kmers = ray.get(ready[0])
+            df_list[basename] = kmers
+        except: pass
     if len(files_nucleotide):
         print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
     # Stacked Bar Plots (top kmer counts)
@@ -355,6 +310,76 @@ def mercat_main():
 
 
     ## Process Proteins ##
+    # PROD ORF Call
+    if m_flag_prodigal:
+        @ray.remote(num_cpus=1)
+        def orf_call(basename, file, prodpath):
+            return mercat2_fasta.orf_call(basename, file, prodpath)
+
+        print(f"\nRunning Prodigal on {len(files_nucleotide)} files")
+        prodpath = os.path.join(m_outputfolder, 'prodigal')
+        jobsChunk = []
+        for basename,files in files_nucleotide.items():
+            tmp_chunk = os.path.join(prodpath, f'chunk_{basename}')
+            for file in files:
+                jobsChunk += [chunk_files.remote(basename, file, 10, tmp_chunk)]
+        jobsProd = []
+        while jobsChunk:
+            ready,jobsChunk = ray.wait(jobsChunk)
+            name,chunks = ray.get(ready[0])
+            for chunk in chunks:
+                jobsProd += [orf_call.remote(basename, chunk, prodpath)]
+        while jobsProd:
+            ready,jobsProd = ray.wait(jobsProd)
+            name,chunk = ray.get(ready[0])
+            if name not in files_protein:
+                files_protein[name] = os.path.join(prodpath, f'prodigal_{name}.faa')
+                with open(files_protein[name], 'w') as writer:
+                    writer.write(open(chunk).read())
+            else:
+                with open(files_protein[name], 'a') as writer:
+                    writer.write(open(chunk).read())
+            os.remove(chunk)
+
+    # FGS ORF Call
+    if m_flag_fgs:
+        @ray.remote(num_cpus=1)
+        def orf_call_fgs(basename, file, outpath):
+            return mercat2_fasta.orf_call_fgs(basename, file, outpath)
+        print(f"\nRunning FragGeneScanRS on {len(files_nucleotide)} files")
+        start_time = timeit.default_timer()
+        outfgs = os.path.join(m_outputfolder, 'fgs')
+        jobs = []
+        for basename,files in files_nucleotide.items():
+            for chunk in files:
+                jobs += [orf_call_fgs.remote(basename, chunk, outfgs)]
+        while jobs:
+            ready,jobs = ray.wait(jobs)
+            ret = ray.get(ready[0])
+            if ret:
+                files_protein[ret[0]] = ret[1]
+        print(f"Time to run FGS: {round(timeit.default_timer() - start_time,2)} seconds")
+
+    # Chunk large files
+    if m_chunk_size > 0 and files_protein:
+        print("\nChecking for large protein files")
+        start_time = timeit.default_timer()
+        dir_chunks = os.path.join(m_outputfolder, "chunks")
+        # proteins
+        jobs = []
+        for basename,file in files_protein.items():
+            chunk_path = os.path.join(dir_chunks, f"{basename}_protein")
+            jobs += [chunk_files.remote(basename, file, m_chunk_size, chunk_path)]
+        while jobs:
+            ready,jobs = ray.wait(jobs)
+            name,chunks = ray.get(ready[0])
+            files_protein[name] = chunks
+        print(f"Time to check for large protein files: {round(timeit.default_timer() - start_time,2)} seconds")
+    else:
+        for basename,file in files_protein.items():
+            files_protein[basename] = [file]
+
+
     if len(files_protein):
         print("Processing Proteins")
         print(f"Running Mercat2 using {m_num_cores} cores")
