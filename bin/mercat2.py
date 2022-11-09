@@ -8,6 +8,7 @@ __author__      = "Jose L. Figueroa, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
 import os
+import subprocess
 import shutil
 import psutil
 from distutils.util import strtobool
@@ -96,6 +97,35 @@ def chunk_files(name:str, file:str, chunk_size:int, outpath:str):
         all_chunks = [file]
     return (name, all_chunks)
 
+@ray.remote(num_cpus=1)
+def diversity(infile, outfile):
+    return mercat2_diversity.compute_alpha_beta_diversity(infile, outfile)
+@ray.remote(num_cpus=1)
+def countKmers(file, kmer, min_count, num_cores):
+    return mercat2_kmers.find_kmers(file, kmer, min_count, num_cores)
+@ray.remote(num_cpus=1)
+def run_mercat2(basename:str, files:list, out_file:os.PathLike, kmer, min_count, num_cores):
+    kmers = dict()
+    jobs = []
+    for file in files:
+        jobs += [countKmers.remote(file, kmer, min_count, num_cores)]
+    while(jobs):
+        ready,jobs = ray.wait(jobs)
+        for k,v in ray.get(ready[0]).items():
+            if k in kmers:
+                kmers[k] += v
+            else:
+                kmers[k] = v
+    if len(kmers):
+        print(f"Significant k-mers: {len(kmers)}")
+        with open(out_file, 'w') as writer:
+            print('k-mer', f'{basename}_Count', sep='\t', file=writer)
+            for kmer,count in sorted(kmers.items()):
+                print(kmer, count, sep='\t', file=writer)
+        return basename,out_file
+    else:
+        print(f"No significant k-mers found")
+        return basename,None
 
 ## Create Figures
 #
@@ -107,7 +137,7 @@ def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=N
     start_time = timeit.default_timer()
 
     # Stacked Bar Plots (top kmer counts)
-    combined_tsv = os.path.join(out_path, 'combined.tsv')
+    combined_tsv = os.path.join(out_path, f'combined_{type_string}.tsv')
     if not os.path.exists(combined_tsv):
         mercat2_report.merge_tsv(tsv_list, combined_tsv)
         print(f"\nTime to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
@@ -123,13 +153,15 @@ def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=N
         print(f"Virtual Memory {mem_use()}GB")
         start_time = timeit.default_timer()
 
-        combined_tsv = os.path.join(out_path, 'combined_T.tsv')
+        combined_tsv = os.path.join(out_path, f'combined_{type_string}_T.tsv')
         if not os.path.exists(combined_tsv):
             mercat2_report.merge_tsv_T(tsv_list, combined_tsv)
             print(f"\nTime to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
             print(f"Virtual Memory {mem_use()}GB")
 
-        figPlots[f"{type_string} PCA"] = mercat2_figures.plot_PCA(combined_tsv, out_path, lowmem, class_file)
+        out_pca = os.path.join(out_path, f'pca_{type_string}')
+        os.makedirs(out_pca, exist_ok=True)
+        figPlots[f"{type_string} PCA"] = mercat2_figures.plot_PCA(combined_tsv, out_pca, lowmem, class_file)
 
         print(f"Virtual Memory {mem_use()}GB")
 
@@ -157,8 +189,8 @@ def mercat_main():
     m_skipclean = __args__.skipclean
     m_class_file = __args__.category_file
     
-    #if os.path.exists(m_outputfolder) and os.path.isdir(m_outputfolder):
-    #    shutil.rmtree(m_outputfolder)
+    if os.path.exists(m_outputfolder) and os.path.isdir(m_outputfolder):
+        shutil.rmtree(m_outputfolder)
     if not m_outputfolder:
         m_outputfolder = 'mercat_results'
     os.makedirs(m_outputfolder, exist_ok=True)
@@ -169,8 +201,11 @@ def mercat_main():
 
     # Load input files
     gc_content = dict()
-    files_nucleotide = {}
-    files_protein = {}
+    samples = dict(nucleotide=dict(),
+                protein=dict(),
+                prod=dict(),
+                fgs=dict())
+
     cleanpath = os.path.join(m_outputfolder, 'clean')
     print("Loading files")
     start_time = timeit.default_timer()
@@ -201,9 +236,14 @@ def mercat_main():
                     jobsFastq += [fastq_to_fasta.remote(file, cleanpath, basename, m_skipclean)]
                 elif f_ext in FILE_EXT_NUCLEOTIDE:
                     jobsContig += [clean_contig.remote(file, cleanpath, basename)]
-                    ##TODO:MetaomeStats
+                    command = [ 'countAssembly.py', '-f', file, '-i', '100' ]
+                    statfile = os.path.join(m_outputfolder, 'stats', f'{basename}.txt')
+                    os.makedirs(os.path.join(m_outputfolder, 'stats'), exist_ok=True)
+                    with open(statfile, 'w') as writer:
+                        subprocess.run(command, stdout=writer, stderr=subprocess.DEVNULL)
                 elif f_ext in FILE_EXT_PROTEIN:
-                    files_protein[basename] = file
+                    samples['protein'][basename] = [file]
+
     else:
         basepath = os.path.abspath(os.path.expanduser(m_inputfile))
         basename,f_ext = os.path.splitext(os.path.basename(basepath))
@@ -213,100 +253,73 @@ def mercat_main():
             jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename)]
             #TODO:MetaomeStats
         elif f_ext in FILE_EXT_PROTEIN:
-            files_protein[basename] = m_inputfile
+            samples['protein'][basename] = [m_inputfile]
 
     # Wait for jobs
     while jobsFastq:
         ready,jobsFastq = ray.wait(jobsFastq)
         basename,file,jobsqc = ray.get(ready[0])
-        files_nucleotide[basename] = file
+        samples['nucleotide'][basename] = [file]
         jobsQC += jobsqc
         #gc_content[basename] = stat['GC Content']
     while jobsContig:
         ready,jobsContig = ray.wait(jobsContig)
         basename,file,stat = ray.get(ready[0])
-        files_nucleotide[basename] = file
+        samples['nucleotide'][basename] = [file]
         gc_content[basename] = stat['GC Content']
 
-    print(f"Time to load {len(files_nucleotide)+len(files_protein)} files: {round(timeit.default_timer() - start_time,2)} seconds")
+    print(f"Time to load {len(samples['nucleotide'])+len(samples['protein'])} files: {round(timeit.default_timer() - start_time,2)} seconds")
     start_time = timeit.default_timer()
-
-    # Chunk Nucleotides
-    if m_chunk_size > 0:
-        print("Checking for large nucleotide files")
-        start_time = timeit.default_timer()
-        dir_chunks = os.path.join(m_outputfolder, "chunks")
-        # nucleotides
-        jobs = []
-        for basename,file in files_nucleotide.items():
-            chunk_path = os.path.join(dir_chunks, f"{basename}_nucleotide")
-            jobs += [chunk_files.remote(basename, file, m_chunk_size, chunk_path)]
-        while jobs:
-            ready,jobs = ray.wait(jobs)
-            name,chunks = ray.get(ready[0])
-            files_nucleotide[name] = chunks
-        print(f"Time to check for large files: {round(timeit.default_timer() - start_time,2)} seconds")
-    else:
-        for basename,file in files_nucleotide.items():
-            files_nucleotide[basename] = [file]
 
     # Begin processing files
     figPlots = dict()
     tsv_stats = dict()
-    os.makedirs(os.path.join(m_outputfolder, 'tsv'), exist_ok=True)
-
-    @ray.remote(num_cpus=1)
-    def countKmers(file):
-        return mercat2_kmers.find_kmers(file, m_kmer, m_min_count, m_num_cores)
-    @ray.remote(num_cpus=1)
-    def run_mercat2(basename:str, files:list, out_file:os.PathLike):
-        kmers = dict()
-        jobs = []
-        for file in files:
-            jobs += [countKmers.remote(file)]
-        while(jobs):
-            ready,jobs = ray.wait(jobs)
-            for k,v in ray.get(ready[0]).items():
-                if k in kmers:
-                    kmers[k] += v
-                else:
-                    kmers[k] = v
-        if len(kmers):
-            print(f"Significant k-mers: {len(kmers)}")
-            with open(out_file, 'w') as writer:
-                print('k-mer', f'{basename}_Count', sep='\t', file=writer)
-                for kmer,count in sorted(kmers.items()):
-                    print(kmer, count, sep='\t', file=writer)
-            return basename,out_file
-        else:
-            print(f"No significant k-mers found")
-            return None
-
+    jobsDiversity = list()
+    report_dir = os.path.join(m_outputfolder, "report")
+    os.makedirs(report_dir, exist_ok=True)
 
     ## Process Nucleotides ##
-    if len(files_nucleotide):
+    if samples['nucleotide']:
+        # Chunk Nucleotides
+        if m_chunk_size > 0:
+            print("Checking for large nucleotide files")
+            start_time = timeit.default_timer()
+            dir_chunks = os.path.join(m_outputfolder, "chunks_nucleotide")
+            jobs = []
+            for basename,file in samples['nucleotide'].items():
+                chunk_path = os.path.join(dir_chunks, basename)
+                jobs += [chunk_files.remote(basename, *file, m_chunk_size, chunk_path)]
+            while jobs:
+                ready,jobs = ray.wait(jobs)
+                name,chunks = ray.get(ready[0])
+                samples['nucleotide'][name] += chunks
+            print(f"Time to check for large files: {round(timeit.default_timer() - start_time,2)} seconds")
+
         print("Processing Nucleotides")
         print(f"Running Mercat2 using {m_num_cores} cores")
-    jobs = []
-    start_time = timeit.default_timer()
-    for basename,files in files_nucleotide.items():
-        out_counts = out_counts = os.path.join(m_outputfolder, 'tsv', f"{basename}_nucleotide_counts.tsv")
-        if not os.path.exists(out_counts):
-            jobs += [run_mercat2.remote(basename, files, out_counts)]
-    df_list = dict()
-    while(jobs):
-        ready,jobs = ray.wait(jobs)
-        try:
+        out_tsv = os.path.join(m_outputfolder, 'tsv_nucleotide')
+        os.makedirs(out_tsv, exist_ok=True)
+        jobs = []
+        start_time = timeit.default_timer()
+        for basename,files in samples['nucleotide'].items():
+            out_counts = os.path.join(out_tsv, f"{basename}_counts.tsv")
+            files = files[1:] if len(files)>1 else [files[0]]
+            jobs += [run_mercat2.remote(basename, files, out_counts, m_kmer, m_min_count, m_num_cores)]
+        tsv_list = dict()
+        while(jobs):
+            ready,jobs = ray.wait(jobs)
             basename,kmers = ray.get(ready[0])
-            df_list[basename] = kmers
-        except: pass
-    if len(files_nucleotide):
+            if kmers:
+                tsv_list[basename] = kmers
         print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
-    # Stacked Bar Plots (top kmer counts)
-    if len(df_list):
-        figPlots.update(createFigures(df_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file))
-    if len(gc_content) > 0:
-        figPlots['Sample GC Summary'] = mercat2_figures.GC_plot_sample(gc_content)
+        # Stacked Bar Plots (top kmer counts)
+        if len(tsv_list):
+            figPlots.update(createFigures(tsv_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file))
+        for basename,filename in tsv_list.items():
+            outfile = os.path.join(report_dir, f'diversity-nucleotide-{basename}.tsv')
+            jobsDiversity += [diversity.remote(filename, outfile)]
+        if len(gc_content) > 0:
+            figPlots['Sample GC Summary'] = mercat2_figures.GC_plot_sample(gc_content)
 
 
     ## Process Proteins ##
@@ -316,13 +329,14 @@ def mercat_main():
         def orf_call(basename, file, prodpath):
             return mercat2_fasta.orf_call(basename, file, prodpath)
 
-        print(f"\nRunning Prodigal on {len(files_nucleotide)} files")
+        print(f"\nRunning Prodigal on {len(samples['nucleotide'])} files")
+        start_time = timeit.default_timer()
         prodpath = os.path.join(m_outputfolder, 'prodigal')
+        os.makedirs(prodpath, exist_ok=True)
         jobsChunk = []
-        for basename,files in files_nucleotide.items():
+        for basename,files in samples['nucleotide'].items():
             tmp_chunk = os.path.join(prodpath, f'chunk_{basename}')
-            for file in files:
-                jobsChunk += [chunk_files.remote(basename, file, 10, tmp_chunk)]
+            jobsChunk += [chunk_files.remote(basename, files[0], 1, tmp_chunk)]
         jobsProd = []
         while jobsChunk:
             ready,jobsChunk = ray.wait(jobsChunk)
@@ -332,103 +346,98 @@ def mercat_main():
         while jobsProd:
             ready,jobsProd = ray.wait(jobsProd)
             name,chunk = ray.get(ready[0])
-            if name not in files_protein:
-                files_protein[name] = os.path.join(prodpath, f'prodigal_{name}.faa')
-                with open(files_protein[name], 'w') as writer:
+            if name not in samples['prod']:
+                samples['prod'][name] = os.path.join(prodpath, f'{name}.faa')
+                with open(samples['prod'][name], 'w') as writer:
                     writer.write(open(chunk).read())
             else:
-                with open(files_protein[name], 'a') as writer:
+                with open(samples['prod'][name], 'a') as writer:
                     writer.write(open(chunk).read())
             os.remove(chunk)
+        print(f"Time to run Prodigal: {round(timeit.default_timer() - start_time,2)} seconds")
 
     # FGS ORF Call
     if m_flag_fgs:
         @ray.remote(num_cpus=1)
         def orf_call_fgs(basename, file, outpath):
             return mercat2_fasta.orf_call_fgs(basename, file, outpath)
-        print(f"\nRunning FragGeneScanRS on {len(files_nucleotide)} files")
+        print(f"\nRunning FragGeneScanRS on {len(samples['nucleotide'])} files")
         start_time = timeit.default_timer()
         outfgs = os.path.join(m_outputfolder, 'fgs')
         jobs = []
-        for basename,files in files_nucleotide.items():
-            for chunk in files:
-                jobs += [orf_call_fgs.remote(basename, chunk, outfgs)]
+        for basename,files in samples['nucleotide'].items():
+            jobs += [orf_call_fgs.remote(basename, files[0], outfgs)]
         while jobs:
             ready,jobs = ray.wait(jobs)
             ret = ray.get(ready[0])
             if ret:
-                files_protein[ret[0]] = ret[1]
+                samples['fgs'][ret[0]] = ret[1]
         print(f"Time to run FGS: {round(timeit.default_timer() - start_time,2)} seconds")
 
-    # Chunk large files
-    if m_chunk_size > 0 and files_protein:
-        print("\nChecking for large protein files")
-        start_time = timeit.default_timer()
-        dir_chunks = os.path.join(m_outputfolder, "chunks")
-        # proteins
-        jobs = []
-        for basename,file in files_protein.items():
-            chunk_path = os.path.join(dir_chunks, f"{basename}_protein")
-            jobs += [chunk_files.remote(basename, file, m_chunk_size, chunk_path)]
-        while jobs:
-            ready,jobs = ray.wait(jobs)
-            name,chunks = ray.get(ready[0])
-            files_protein[name] = chunks
-        print(f"Time to check for large protein files: {round(timeit.default_timer() - start_time,2)} seconds")
-    else:
-        for basename,file in files_protein.items():
-            files_protein[basename] = [file]
 
-
-    if len(files_protein):
-        print("Processing Proteins")
+    ## Process Proteins ##
+    for sample_type in samples.keys():
+        if (not samples[sample_type]) or (sample_type == "nucleotide"):
+            continue
+        print(f"\nProcessing Proteins ({sample_type})")
         print(f"Running Mercat2 using {m_num_cores} cores")
-    jobs = []
-    start_time = timeit.default_timer()
-    df_list = dict()
-    for basename,files in files_protein.items():
-        out_counts = out_counts = os.path.join(m_outputfolder, 'tsv', f"{basename}_protein_counts.tsv")
-        if os.path.exists(out_counts):
-            df_list[basename] = out_counts
-        else:
-            jobs += [run_mercat2.remote(basename, files, out_counts)]
-    while(jobs):
-        ready,jobs = ray.wait(jobs)
-        if ready[0]:
-            try:
+        # Chunk large files
+        if m_chunk_size > 0:
+            print("Checking for large protein files")
+            start_time = timeit.default_timer()
+            dir_chunks = os.path.join(m_outputfolder, f"chunks_{sample_type}")
+            jobs = []
+            for basename,file in samples[sample_type].items():
+                chunk_path = os.path.join(dir_chunks, basename)
+                jobs += [chunk_files.remote(basename, file, m_chunk_size, chunk_path)]
+            while jobs:
+                ready,jobs = ray.wait(jobs)
+                name,chunks = ray.get(ready[0])
+                samples[sample_type][name] = chunks
+        print(f"Time to check for large protein files: {round(timeit.default_timer() - start_time,2)} seconds")
+
+        jobs = []
+        tsv_list = dict()
+        out_tsv = os.path.join(m_outputfolder, f"tsv_{sample_type}")
+        os.makedirs(out_tsv, exist_ok=True)
+        start_time = timeit.default_timer()
+        for basename,files in samples[sample_type].items():
+            out_counts = os.path.join(out_tsv, f"{basename}_counts.tsv")
+            files = files[1:] if len(files)>1 else [files[0]]
+            jobs += [run_mercat2.remote(basename, files, out_counts, m_kmer, m_min_count, m_num_cores)]
+        while(jobs):
+            ready,jobs = ray.wait(jobs)
+            if ready[0]:
                 basename,kmers = ray.get(ready[0])
-                df_list[basename] = kmers
-            except: pass
-    if len(files_protein):
+                if kmers:
+                    tsv_list[basename] = kmers
         print(f"Time to compute {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
-    if len(df_list):
-        figPlots.update(createFigures(df_list, "Protein", m_outputfolder, m_lowmem, m_class_file))
+        if len(tsv_list):
+            figPlots.update(createFigures(tsv_list, sample_type, m_outputfolder, m_lowmem, m_class_file))
+        for basename,filename in tsv_list.items():
+            outfile = os.path.join(report_dir, f'diversity-{sample_type}-{basename}.tsv')
+            jobsDiversity += [diversity.remote(filename, outfile)]
+
 
     # Plot Data
-    report_dir = os.path.join(m_outputfolder, "report")
-    os.makedirs(report_dir, exist_ok=True)
-
-    @ray.remote(num_cpus=1)
-    def diversity(infile, outfile):
-        mercat2_diversity.compute_alpha_beta_diversity(infile, outfile)
-        return
-    jobs = list()
-    for filename in os.listdir(os.path.join(m_outputfolder, 'tsv')):
-        if not filename.endswith('.tsv'):
-            continue
-        jobs += [diversity.remote(os.path.join(m_outputfolder, 'tsv', filename), os.path.join(report_dir, f'diversity-{filename}'))]
-    while jobs:
-        ready,jobs = ray.wait(jobs)
+    mercat2_report.write_html(os.path.join(report_dir, "report.html"), figPlots, tsv_stats)
+    for sample_type in ['protein', 'fgs', 'prod']:
+        tsv_out = os.path.join(report_dir, f'metrics-{sample_type}.tsv')
+        htm_out = os.path.join(report_dir, f'metrics-{sample_type}.html')
+        figPlots = mercat2_figures.plot_sample_metrics(samples[sample_type], tsv_out)
+        mercat2_report.write_html(htm_out, figPlots, dict())
 
     # Wait for any remaining QC Jobs
     print("Waiting for any remaining QC jobs")
     while jobsQC:
         ready,jobsQC = ray.wait(jobsQC)
         ray.get(ready[0])
+    if jobsDiversity:
+        print(f"Waiting for ({len(jobsDiversity)}) remaining Diversity Metrics jobs")
+    while jobsDiversity:
+        ready,jobsDiversity = ray.wait(jobsDiversity)
+        ray.get(ready[0])
 
-    mercat2_report.write_html(os.path.join(report_dir, "report.html"), figPlots, tsv_stats)
-    figPlots = mercat2_figures.plot_sample_metrics(files_protein, report_dir)
-    mercat2_report.write_html(os.path.join(report_dir, "protein_metrics.html"), figPlots, dict())
     return
 
 

@@ -135,7 +135,7 @@ def GC_plot_sample(gc_content: dict):
 
 
 # Protein Metrics Plot samples
-def plot_sample_metrics(protein_samples: dict, outpath):
+def plot_sample_metrics(protein_samples: dict, tsv_out):
     '''Creates a plotly bar graph of the protein metrics.
 
     Parameters:
@@ -145,8 +145,6 @@ def plot_sample_metrics(protein_samples: dict, outpath):
         plotly fig: A plotly barplot figure of the protein metrics from the samples dictionary.
     '''
 
-    os.makedirs(outpath, exist_ok=True)
-    tsv_out = os.path.join(outpath, 'metrics.tsv')
     with open(tsv_out, 'w') as writer:
         print('Sample', 'seq_name', 'length', 'PI', 'MW', 'Hydro', sep='\t', file=writer)
 
@@ -275,6 +273,8 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
         print(f"Time to save PCA TSV file: {round(timeit.default_timer() - start_time,2)} seconds")
         print(f"Virtual Memory {mem_use()}GB")
 
+
+    start_time = timeit.default_timer()
     XDF = pd.read_csv(pca_tsv, sep='\t', index_col=0)
     print(f"\nTime to read PCA TSV file: {round(timeit.default_timer() - start_time,2)} seconds")
     print(f"Virtual Memory {mem_use()}GB")
@@ -283,10 +283,13 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
         df_tax = pd.read_csv(class_file, sep='\t', index_col=0, names=['class'])
         XDF['class'] = XDF.index.map(df_tax['class']).fillna('NA')
         color_col = 'class'
+        print(f"\nTime to load CLASS file: {round(timeit.default_timer() - start_time,2)} seconds")
+        print(f"Virtual Memory {mem_use()}GB")
     else:
         color_col = names
 
     # Plotly PCA
+    start_time = timeit.default_timer()
     labels_axis = {
         f'PC{i}' : f"PC {i} ({val:.1f}%)"
         for i,val in enumerate(pca.explained_variance_ratio_ * 100, start=1)

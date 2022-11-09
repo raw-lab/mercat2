@@ -68,6 +68,7 @@ def removeN(fasta:str, outpath:str):
     gc_count = 0
     total_length = 0
     with open(fasta, 'r') as reader, open(outFasta, 'w') as writer:
+        line = reader.readline()
         while line:
             line = line.strip()
             if line.startswith('>'):
@@ -200,7 +201,8 @@ def orf_call(basename:str, file:str, outpath:str):
                 #'-f', 'gff',
                 '-p', 'meta']
     os.makedirs(outpath, exist_ok=True)
-    subprocess.run(prod_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
+    with open(f'{outpath}/{basename}.stdout', 'w') as stdout, open(f'{outpath}/{basename}.stderr', 'w') as stderr:
+        subprocess.run(prod_cmd, stdout=stdout, stderr=stderr)
     return (basename, out_pro)
 
 
@@ -234,19 +236,15 @@ def orf_call_fgs(basename:str, file:str, outpath:str):
 
     outpath = os.path.abspath(outpath)
     os.makedirs(outpath, exist_ok=True)
-    #prefix = os.path.join(outpath, basename)
-    prefix = os.path.join(outpath, f'{basename}.faa')
+    faa_out = os.path.join(outpath, f'{basename}.faa')
 
     command = ['FragGeneScanRs',
                 '--complete',
                 '-s', file,
                 '-t', 'complete',
-                '-a', prefix,
-                #'-o', prefix,
-                #'-g', '/dev/null'
-                #'-m', '/dev/null',
+                '-a', faa_out,
                 ]
 
     subprocess.run(command)
 
-    return (basename, f"{prefix}")
+    return (basename, f"{faa_out}")
