@@ -15,7 +15,7 @@ def compute_alpha_beta_diversity(counts_tsv, out_file):
             method = getattr(skbio_alpha, func)
             return func, method(count)
         except:
-            return func, 'NONE'
+            return func, 'NA'
 
     counts = list()
     with open(counts_tsv) as reader:
@@ -32,17 +32,17 @@ def compute_alpha_beta_diversity(counts_tsv, out_file):
         ready,jobs = ray.wait(jobs)
         if ready:
             key,value = ray.get(ready[0])
-            if value is not 'NONE':
-                results[key] = value
+            results[key] = value
 
     with open(out_file, 'w') as writer:
-        #writer.write(abmetric + " = " + str(metrics[abmetric]) + "\n")
-        print('shannon', round(results['shannon'], 2), sep='\t', file=writer)
-        print('simpson', round(results['simpson'], 2), sep='\t', file=writer)
-        print('simpson_e', round(results['simpson_e'], 2), sep='\t', file=writer)
-        print('goods_coverage', round(results['goods_coverage'], 2), sep='\t', file=writer)
-        print('fisher_alpha', round(results['fisher_alpha'], 2), sep='\t', file=writer)
-        print('dominance', round(results['dominance'], 2), sep='\t', file=writer)
-        print('chao1', round(results['chao1'], 2), sep='\t', file=writer)
-        print('chao1_ci', results['chao1_ci'], sep='\t', file=writer)
-        print('ace', round(results['ace'], 2), sep='\t', file=writer)
+        for func in ['shannon', 'simpson', 'simpson_e', 'goods_coverage', 'fisher_alpha', 'dominance', 'chao1', 'chao1_ci', 'ace']:
+            if func not in results:
+                continue
+            if type(results[func]) is not str:
+                try:
+                    value = round(results[func], 2)
+                except:
+                    value = [round(x,2) for x in results[func]]
+            else:
+                value = results[func]
+            print(func, value, sep='\t', file=writer)

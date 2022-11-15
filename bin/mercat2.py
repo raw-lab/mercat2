@@ -212,22 +212,23 @@ def mercat_main():
     jobsQC = list()
     jobsFastq = list()
     jobsContig = list()
+
+    @ray.remote(num_cpus=1)
+    def fastq_qc(file, cleanpath, basename):
+        return (basename, mercat2_fasta.qc(file, cleanpath, basename))
+    @ray.remote(num_cpus=1)
+    def clean_contig(file, cleanpath, basename):
+        file,stat = mercat2_fasta.removeN(file, cleanpath)
+        return (basename, file, stat)
+    @ray.remote(num_cpus=1)
+    def fastq_to_fasta(file, cleanpath, basename, skiptrim:bool):
+        jobsQC = [fastq_qc.remote(file, cleanpath, basename)]
+        if not skiptrim:
+            file = mercat2_fasta.trim(file, cleanpath, basename)
+            jobsQC += [fastq_qc.remote(file, cleanpath, basename)]
+        return (basename, mercat2_fasta.fq2fa(file, cleanpath, basename), jobsQC)
     if m_inputfolder:
         m_inputfolder = os.path.abspath(os.path.expanduser(m_inputfolder))
-        @ray.remote(num_cpus=1)
-        def fastq_qc(file, cleanpath, basename):
-            return (basename, mercat2_fasta.qc(file, cleanpath, basename))
-        @ray.remote(num_cpus=1)
-        def fastq_to_fasta(file, cleanpath, basename, skiptrim:bool):
-            jobsQC = [fastq_qc.remote(file, cleanpath, basename)]
-            if not skiptrim:
-                file = mercat2_fasta.trim(file, cleanpath, basename)
-                jobsQC += [fastq_qc.remote(file, cleanpath, basename)]
-            return (basename, mercat2_fasta.fq2fa(file, cleanpath, basename), jobsQC)
-        @ray.remote(num_cpus=1)
-        def clean_contig(file, cleanpath, basename):
-            file,stat = mercat2_fasta.removeN(file, cleanpath)
-            return (basename, file, stat)
         for fname in os.listdir(m_inputfolder):
             file = os.path.join(m_inputfolder, fname)
             if not os.path.isdir(file):
