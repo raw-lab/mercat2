@@ -29,10 +29,7 @@ setuptools.setup(
     platforms = ['Unix'], # metadata
     classifiers = [ # This is the new updated way for metadata, but old way seems to still be used in some of the output
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "License :: OSI Approved :: BSD License",
         "Operating System :: Unix",
     ],

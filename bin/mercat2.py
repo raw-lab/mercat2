@@ -101,14 +101,14 @@ def chunk_files(name:str, file:str, chunk_size:int, outpath:str):
 def diversity(infile, outfile):
     return mercat2_diversity.compute_alpha_beta_diversity(infile, outfile)
 @ray.remote(num_cpus=1)
-def countKmers(file, kmer, min_count, num_cores):
-    return mercat2_kmers.find_kmers(file, kmer, min_count, num_cores)
+def countKmers(file, kmer, min_count):
+    return mercat2_kmers.find_kmers(file, kmer, min_count)
 @ray.remote(num_cpus=1)
 def run_mercat2(basename:str, files:list, out_file:os.PathLike, kmer, min_count, num_cores):
     kmers = dict()
     jobs = []
     for file in files:
-        jobs += [countKmers.remote(file, kmer, min_count, num_cores)]
+        jobs += [countKmers.remote(file, kmer, min_count)]
     while(jobs):
         ready,jobs = ray.wait(jobs)
         for k,v in ray.get(ready[0]).items():
@@ -252,7 +252,11 @@ def mercat_main():
             jobsFastq += [fastq_to_fasta.remote(m_inputfile, cleanpath, basename, m_skipclean)]
         elif f_ext in FILE_EXT_NUCLEOTIDE:
             jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename)]
-            #TODO:MetaomeStats
+            command = [ 'countAssembly.py', '-f', m_inputfile, '-i', '100' ]
+            statfile = os.path.join(m_outputfolder, 'stats', f'{basename}.txt')
+            os.makedirs(os.path.join(m_outputfolder, 'stats'), exist_ok=True)
+            with open(statfile, 'w') as writer:
+                subprocess.run(command, stdout=writer, stderr=subprocess.DEVNULL)
         elif f_ext in FILE_EXT_PROTEIN:
             samples['protein'][basename] = [m_inputfile]
 
@@ -423,10 +427,11 @@ def mercat_main():
     # Plot Data
     mercat2_report.write_html(os.path.join(report_dir, "report.html"), figPlots, tsv_stats)
     for sample_type in ['protein', 'fgs', 'prod']:
-        tsv_out = os.path.join(report_dir, f'metrics-{sample_type}.tsv')
-        htm_out = os.path.join(report_dir, f'metrics-{sample_type}.html')
-        figPlots = mercat2_figures.plot_sample_metrics(samples[sample_type], tsv_out)
-        mercat2_report.write_html(htm_out, figPlots, dict())
+        if len(samples[sample_type]):
+            tsv_out = os.path.join(report_dir, f'metrics-{sample_type}.tsv')
+            htm_out = os.path.join(report_dir, f'metrics-{sample_type}.html')
+            figPlots = mercat2_figures.plot_sample_metrics(samples[sample_type], tsv_out)
+            mercat2_report.write_html(htm_out, figPlots, dict())
 
     # Wait for any remaining QC Jobs
     print("Waiting for any remaining QC jobs")

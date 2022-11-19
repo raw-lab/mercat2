@@ -95,7 +95,7 @@ def write_html(outfile:str, figPlots:dict, tsv_stats:dict):
 
 # Merge TSV Files
 def merge_tsv(tsv_list:dict, out_file:os.PathLike):
-    names = sorted(list(tsv_list.keys()))#, key=lambda x: x.lower())
+    names = sorted(list(tsv_list.keys()))
     file_list = dict()
     for name in names:
         file_list[name] = open(tsv_list[name])
