@@ -212,7 +212,6 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
     '''
 
     start_time = timeit.default_timer()
-    print(f"Virtual Memory {mem_use()}GB")
 
     pca_tsv = os.path.join(out_path, 'pca.tsv')
     chunk_size = 1000
@@ -229,7 +228,7 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
     else:
         lowmem = False
 
-    print("Using low memory:", lowmem)
+    print("Using Incremental PCA:", lowmem)
     
     name_iter = iter(names)
     pca = iPCA(n_components=3, batch_size=100) if lowmem else PCA(n_components=3)
@@ -276,8 +275,6 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
 
     start_time = timeit.default_timer()
     XDF = pd.read_csv(pca_tsv, sep='\t', index_col=0)
-    print(f"\nTime to read PCA TSV file: {round(timeit.default_timer() - start_time,2)} seconds")
-    print(f"Virtual Memory {mem_use()}GB")
 
     if class_file:
         df_tax = pd.read_csv(class_file, sep='\t', index_col=0, names=['class'])
@@ -303,6 +300,10 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
         margin=dict(l=0, r=0, t=0, b=0),)
     figPCA.write_image(f"{out_path}/pca{'_incremental' if lowmem else ''}.png")
     
+    print(f"Time to compute 3D PCA: {round(timeit.default_timer() - start_time,2)} seconds")
+    print(f"Virtual Memory {mem_use()}GB")
+
+    start_time = timeit.default_timer()
     if pca.explained_variance_ratio_[2] * 100 < 1:
         figPCA2d = px.scatter(
             XDF, x='PC1', y='PC2', color=color_col,
@@ -311,7 +312,7 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
         figPCA2d.update_layout(font=dict(color="Black"),
             margin=dict(l=0, r=0, t=0, b=0),)
         figPCA2d.write_image(f"{out_path}/pca2D{'_incremental' if lowmem else ''}.png")
-
-    print(f"Time to compute 3D PCA: {round(timeit.default_timer() - start_time,2)} seconds")
+        print(f"Time to compute 2D PCA: {round(timeit.default_timer() - start_time,2)} seconds")
+        print(f"Virtual Memory {mem_use()}GB")
 
     return figPCA

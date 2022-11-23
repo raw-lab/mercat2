@@ -203,7 +203,7 @@ def orf_call(basename:str, file:str, outpath:str):
     os.makedirs(outpath, exist_ok=True)
     with open(f'{outpath}/{basename}.stdout', 'w') as stdout, open(f'{outpath}/{basename}.stderr', 'w') as stderr:
         subprocess.run(prod_cmd, stdout=stdout, stderr=stderr)
-    return (basename, out_pro)
+    return out_pro
 
 
 ## ORF Call FragGeneScanRS

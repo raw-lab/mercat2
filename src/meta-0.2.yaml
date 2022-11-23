@@ -17,10 +17,10 @@ build:
 requirements:
   host:
     - pip
-    - python >=3.10
+    - python <3.10
     - setuptools
   run:
-    - python >=3.10
+    - python <3.10
     - grpcio
     - fastqc
     - fastp
@@ -36,10 +36,10 @@ requirements:
     - plotly
     - psutil
     - scikit-learn
-    metaomestats
-    scikit-bio
-    scipy ==1.8.1
-    python-kaleido
+    - metaomestats
+    - scikit-bio
+    - scipy ==1.8.1
+    - python-kaleido
 
 test:
   imports:
