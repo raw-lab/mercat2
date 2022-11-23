@@ -26,14 +26,13 @@ def calculateKmerCount(seq:str, kmer:int) -> dict:
 
 
 ## Find k-mers
-def find_kmers(file:str, kmer:int, min_count:int, num_cores:int):
+def find_kmers(file:str, kmer:int, min_count:int):
     '''Calculates the k-mer count in a fasta file.
 
     Parameters:
         file (str): path to a fasta file to scan for k-mers.
         kmer (int): k-mer length.
         min_count (int): minimum count of k-mers found to be considered significant.
-        num_cores (int): cpu count to use for parallel processing.
 
     Returns:
         dict: A dictionary with the counts of each k-mer found.
@@ -70,3 +69,4 @@ def find_kmers(file:str, kmer:int, min_count:int, num_cores:int):
             significant_kmers[k] = v
 
     return significant_kmers
+

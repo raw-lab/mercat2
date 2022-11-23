@@ -14,8 +14,8 @@ def package_files(directory):
 
 setuptools.setup(
     name = "mercat2",
-    version = "0.2",
-    author = "Jose Luis Figueroa III, Richard White III",
+    version = "1.0",
+    author = "Jose Luis Figueroa, Richard White III",
     author_email = "jlfiguer@uncc.edu",
     description = "versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis",
     long_description = open("README.md", "r").read(),
@@ -29,14 +29,12 @@ setuptools.setup(
     platforms = ['Unix'], # metadata
     classifiers = [ # This is the new updated way for metadata, but old way seems to still be used in some of the output
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "License :: OSI Approved :: BSD License",
         "Operating System :: Unix",
     ],
-    python_requires = '<3.10',
+    python_requires = '>=3.9',
     install_requires = [
         'setuptools',
         'ray',
@@ -48,5 +46,6 @@ setuptools.setup(
         'psutil',
         'dominate',
         'scikit-learn',
+        'metaomestats',
     ]
 )

@@ -1,10 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name=22-06-03_prodigal_5-genomes
+#SBATCH --job-name=22-11-09
 #SBATCH --partition=Draco
+#SBATCH --exclusive
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
-#SBATCH --cpus-per-task=6
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=0
 #SBATCH --time=1-0
 #SBATCH -o slurm-%x-%j.out
@@ -24,9 +25,30 @@ SECONDS=0
 
 module load anaconda3
 eval "$(conda shell.bash hook)"
-conda activate mercat2-ray
+conda activate mercat2-dev
 
-command time mercat2.py -prod -k 4 -f ../data/5_genomes -o "results_$SLURM_JOB_NAME"
+pip install ~/raw-lab/mercat2
+
+export PYTHONUNBUFFERED=1
+
+echo "##### RUNNING MerCat2 k=4 c=0 #####"
+command time mercat2.py -k 4 -f ../data/5_genomes -o $SLURM_JOB_NAME-k4-min0 -fgs -c 0
+echo "##### RUNNING MerCat2 k=4 c=3 #####"
+command time mercat2.py -k 4 -f ../data/5_genomes -o $SLURM_JOB_NAME-k4-min3 -fgs -c 3
+echo "##### RUNNING MerCat2 k=4 c=5 #####"
+command time mercat2.py -k 4 -f ../data/5_genomes -o $SLURM_JOB_NAME-k4-min5 -fgs -c 5
+echo "##### RUNNING MerCat2 k=4 c=10 ##### "
+command time mercat2.py -k 4 -f ../data/5_genomes -o $SLURM_JOB_NAME-k4-min10 -fgs -c 10
+
+
+echo "##### RUNNING MerCat2 k=31 c=0 #####"
+command time mercat2.py -k 31 -f ../data/5_genomes -o $SLURM_JOB_NAME-k31-min0 -fgs -c 0
+echo "##### RUNNING MerCat2 k=31 c=3 #####"
+command time mercat2.py -k 31 -f ../data/5_genomes -o $SLURM_JOB_NAME-k31-min3 -fgs -c 3
+echo "##### RUNNING MerCat2 k=31 c=5 #####"
+command time mercat2.py -k 31 -f ../data/5_genomes -o $SLURM_JOB_NAME-k31-min5 -fgs -c 5
+echo "##### RUNNING MerCat2 k=31 c=10 #####"
+command time mercat2.py -k 31 -f ../data/5_genomes -o $SLURM_JOB_NAME-k31-min10 -fgs -c 10
 
 
 echo ""
