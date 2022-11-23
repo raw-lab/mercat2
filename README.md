@@ -56,9 +56,6 @@ Required dependencies:
 - For eukaryote rich samples or general applications (-fgs option)
   - [FragGeneScanRs](<https://github.com/unipept/FragGeneScanRs>)
 
-- when the -fgs option is used
-  - FragGeneScanRS [https://github.com/unipept/FragGeneScanRs]
-
 These are available through BioConda, except FragGeneScanRS, which is included in the MerCat2 distribution.  
 
 ```bash
@@ -123,7 +120,7 @@ mercat2.py -i /path/to/input-file -k 3 -n 8 -c 10 -prod
 mercat2.py -i /path/to/input-file -k 3 -n 8 -c 10 -fgs
 ```
 
-- the prodigal and FragGeneScanRS option run the k-mer counter on both contigs and produced amino acids
+- the prodigal and FragGeneScanRS options run the k-mer counter on both contigs and produced amino acids
 
 ## Outputs
 
