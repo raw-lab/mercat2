@@ -6,24 +6,15 @@
 
 ## Installing MerCat2
 
-### Option 1: Anaconda Installer
+### Option 1: Mamba Installer
 
 - Available via Bioconda:
 
 ```bash
-conda create -n mercat2 -c conda-forge -c bioconda mercat2
-conda activate mercat2
+mamba create -n mercat2 -c bioconda -c conda-forge mercat2=1.0 scikit-bio=0.5.7 ray-tune
 ```
 
-### Option 2: PIP Installer
-
-- Dependencies are not automatically installed when using pip.
-
-```bash
-pip install mercat2
-```
-
-### Option 3: Source Installer
+### Option 2: Source Installer
 
 - Clone mercat2 from github
 - Run install_mercat2.sh to install all required dependencies
