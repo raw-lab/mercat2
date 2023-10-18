@@ -6,12 +6,25 @@
 
 ## Installing MerCat2
 
-### Option 1: Mamba Installer
+### Option 1: Bioconda Installer
+
+#### Install mamba using conda
+
+```bash
+conda activate base
+conda install mamba
+```
+
+- NOTE: Make sure you install mamba in your base conda environment
+- We have found that mamba is faster than conda for installing packages and creating environments. Using conda might fail to resolve dependencies.
+
+#### Install MerCat2
 
 - Available via Bioconda:
 
 ```bash
-mamba create -n mercat2 -c bioconda -c conda-forge mercat2=1.0 scikit-bio=0.5.7 ray-tune
+mamba create -n mercat2 -c conda-forge -c bioconda mercat2
+conda activate mercat2
 ```
 
 ### Option 2: Source Installer
