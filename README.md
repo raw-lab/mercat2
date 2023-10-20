@@ -6,24 +6,28 @@
 
 ## Installing MerCat2
 
-### Option 1: Anaconda Installer
+### Option 1: Bioconda Installer
+
+#### Install mamba using conda
+
+```bash
+conda activate base
+conda install mamba
+```
+
+- NOTE: Make sure you install mamba in your base conda environment
+- We have found that mamba is faster than conda for installing packages and creating environments. Using conda might fail to resolve dependencies.
+
+#### Install MerCat2
 
 - Available via Bioconda:
 
 ```bash
-conda create -n mercat2 -c conda-forge -c bioconda mercat2
+mamba create -n mercat2 -c conda-forge -c bioconda mercat2
 conda activate mercat2
 ```
 
-### Option 2: PIP Installer
-
-- Dependencies are not automatically installed when using pip.
-
-```bash
-pip install mercat2
-```
-
-### Option 3: Source Installer
+### Option 2: Source Installer
 
 - Clone mercat2 from github
 - Run install_mercat2.sh to install all required dependencies
@@ -144,7 +148,10 @@ The speed of MerCat2 can be increased when more memory or computer nodes are ava
 
 ## Citing Mercat
 
-If you are publishing results obtained using MerCat2, please cite:
+If you are publishing results obtained using MerCat2, please cite: <br />
+Figueroa JL, Panyala A, Colby S, Friesen M, Tiemann L, White III RA. 2022.  <br />
+MerCat2: a versatile k-mer counter and diversity estimator for database-independent property analysis obtained from omics data. bioRxiv.  <br />
+[paper](https://www.biorxiv.org/content/10.1101/2022.11.22.517562v1)   <br />
 
 ### CONTACT
 
