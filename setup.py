@@ -14,7 +14,7 @@ def package_files(directory):
 
 setuptools.setup(
     name = "mercat2",
-    version = "1.0",
+    version = "1.1",
     author = "Jose Luis Figueroa, Richard White III",
     author_email = "jlfiguer@uncc.edu",
     description = "versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis",
@@ -37,6 +37,7 @@ setuptools.setup(
     python_requires = '>=3.9',
     install_requires = [
         'setuptools',
+        'grpcio ==1.43',
         'ray',
         'configargparse',
         'pandas',
@@ -46,6 +47,11 @@ setuptools.setup(
         'psutil',
         'dominate',
         'scikit-learn',
+        'scikit-bio',
+        'scipy',
         'metaomestats',
+        'kaleido',
+
+# ray-core ray-dashboard ray-default ray-tune
     ]
 )
