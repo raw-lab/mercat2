@@ -13,15 +13,17 @@ build:
   number: 1
   noarch: python
   script: "{{ PYTHON }} -m pip install . -vv"
+  run_exports:
+    - {{ pin_subpackage('mercat2', max_pin="x") }}
 
 requirements:
   host:
     - pip
-    - python <3.10
+    - python >=3.9
     - setuptools
   run:
-    - python <3.10
-    - grpcio
+    - python >=3.9
+    - grpcio ==1.43
     - fastqc
     - fastp
     - prodigal
@@ -32,7 +34,7 @@ requirements:
     - configargparse
     - dominate
     - humanize
-    - numpy <1.25.0
+    - numpy
     - pandas
     - plotly
     - psutil
@@ -41,6 +43,7 @@ requirements:
     - scikit-bio ==0.5.7
     - scipy ==1.8.1
     - python-kaleido
+
 
 test:
   imports:

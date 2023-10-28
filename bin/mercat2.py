@@ -3,7 +3,7 @@
 
 """mercat2.py: Python code for Parallel k-mer counting."""
 
-__version__     = "1.0"
+__version__     = "1.1"
 __author__      = "Jose L. Figueroa, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
@@ -48,6 +48,7 @@ def parseargs():
     parser.add_argument('-o', type=str, default='mercat_results', required=False, help="Output folder, default = 'mercat_results' in current directory")
     parser.add_argument('-lowmem', type=strtobool, default=None, help="Flag to use incremental PCA when low memory is available. [auto]")
     parser.add_argument('-skipclean', action='store_true', help='skip trimming of fastq files')
+    parser.add_argument('-toupper', action='store_true', help='convert all input sequences to uppercase')
     parser.add_argument('-category_file', type=str, default=None, help=argparse.SUPPRESS)
 
     # Process arguments
@@ -159,7 +160,11 @@ def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=N
 
         out_pca = os.path.join(out_path, f'pca_{type_string}')
         os.makedirs(out_pca, exist_ok=True)
-        figPlots[f"{type_string} PCA"] = mercat2_figures.plot_PCA(combined_tsv, out_pca, lowmem, class_file)
+        pca3d,pca2d = mercat2_figures.plot_PCA(combined_tsv, out_pca, lowmem, class_file)
+        if pca3d:
+            figPlots[f"{type_string} PCA 3D"] = pca3d
+        if pca2d:
+            figPlots[f"{type_string} PCA 2D"] = pca2d
 
     return figPlots
 
@@ -183,6 +188,7 @@ def mercat_main():
     m_outputfolder = __args__.o
     m_lowmem = None if __args__.lowmem is None else bool(__args__.lowmem)
     m_skipclean = __args__.skipclean
+    m_toupper = __args__.toupper
     m_class_file = __args__.category_file
     
     if os.path.exists(m_outputfolder) and os.path.isdir(m_outputfolder):
@@ -214,8 +220,8 @@ def mercat_main():
     def fastq_qc(file, cleanpath, basename):
         return (basename, mercat2_fasta.qc(file, cleanpath, basename))
     @ray.remote(num_cpus=1)
-    def clean_contig(file, cleanpath, basename):
-        file,stat = mercat2_fasta.removeN(file, cleanpath)
+    def clean_contig(file, cleanpath, basename, toupper):
+        file,stat = mercat2_fasta.removeN(file, cleanpath, toupper)
         return (basename, file, stat)
     @ray.remote(num_cpus=1)
     def fastq_to_fasta(file, cleanpath, basename, skiptrim:bool):
@@ -246,9 +252,9 @@ def mercat_main():
         basepath = os.path.abspath(os.path.expanduser(m_inputfile))
         basename,f_ext = os.path.splitext(os.path.basename(basepath))
         if f_ext in FILE_EXT_FASTQ:
-            jobsFastq += [fastq_to_fasta.remote(m_inputfile, cleanpath, basename, m_skipclean)]
+            jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename, m_toupper)]
         elif f_ext in FILE_EXT_NUCLEOTIDE:
-            jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename)]
+            jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename, m_toupper)]
             command = [ 'countAssembly.py', '-f', m_inputfile, '-i', '100' ]
             statfile = os.path.join(m_outputfolder, 'stats', f'{basename}.txt')
             os.makedirs(os.path.join(m_outputfolder, 'stats'), exist_ok=True)

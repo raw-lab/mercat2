@@ -47,7 +47,7 @@ def split_sequenceN(header:str, sequence:str):
 
 
 ## Remove N's
-def removeN(fasta:str, outpath:str):
+def removeN(fasta:str, outpath:str, toupper:bool):
     '''Splits sequences in a scaffold fasta file at N repeats.
 
     Parameters:
@@ -74,22 +74,35 @@ def removeN(fasta:str, outpath:str):
             if line.startswith('>'):
                 name = line[1:]
                 sequence = ""
+                seq_line = list()
                 line = reader.readline()
                 while line:
                     line = line.strip()
                     if line.startswith('>'):
                         break
                     sequence += line
+                    seq_line += [line]
                     line = reader.readline()
                 if 'N' in sequence:
                     sequences, stats = split_sequenceN(name, sequence)
-                    print('\n'.join(sequences), file=writer)
+                    #print('\n'.join(sequences), file=writer)
                     for seq in sequences:
+                        if seq.startswith('>'):
+                            print(seq, file=writer)
+                        else:
+                            if toupper:
+                                print(seq.upper(), file=writer)
+                            else:
+                                print(seq, file=writer)
                         gc_count += seq.count('G') + seq.count('C')
                         total_length += len(seq)
                 else:
                     print('>', name, sep='', file=writer)
-                    print('\n'.join(textwrap.wrap(sequence, 80)), file=writer)
+                    for seq in seq_line:
+                        if toupper:
+                            print(seq.upper(), file=writer)
+                        else:
+                            print(seq, file=writer)
                     gc_count += sequence.count('G') + sequence.count('C')
                     total_length += len(sequence)
                 continue #already got next line, next item in loop

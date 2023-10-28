@@ -304,6 +304,7 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
     print(f"Virtual Memory {mem_use()}GB")
 
     start_time = timeit.default_timer()
+    figPCA2d = None
     if pca.explained_variance_ratio_[2] * 100 < 1:
         figPCA2d = px.scatter(
             XDF, x='PC1', y='PC2', color=color_col,
@@ -315,4 +316,4 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
         print(f"Time to compute 2D PCA: {round(timeit.default_timer() - start_time,2)} seconds")
         print(f"Virtual Memory {mem_use()}GB")
 
-    return figPCA
+    return figPCA, figPCA2d
