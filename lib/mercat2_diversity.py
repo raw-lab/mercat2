@@ -4,7 +4,6 @@
 
 import ray
 from skbio.diversity import alpha as skbio_alpha
-from skbio.diversity import beta as skbio_beta
 
 
 def compute_alpha_beta_diversity(counts_tsv, out_file):
