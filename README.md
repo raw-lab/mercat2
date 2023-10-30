@@ -79,6 +79,7 @@ conda install -c bioconda fastqc fastp prodigal
   - Must be one of ['.fa', '.fna', '.ffn', '.fasta', 'fastq']
 - -s S split files into chunks of S size, in MB [default is 100MB]
 - -skipclean skips the trimming steps [default = False]
+- -toupper convert all input sequences to uppercase [default = False]
 - -o output folder [default is 'mercat_results' in the current working directory]
 - -h, --help show this help message
 
