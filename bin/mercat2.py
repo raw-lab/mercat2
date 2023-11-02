@@ -3,7 +3,7 @@
 
 """mercat2.py: Python code for Parallel k-mer counting."""
 
-__version__     = "1.1"
+__version__     = "1.2"
 __author__      = "Jose L. Figueroa, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
@@ -37,11 +37,11 @@ def parseargs():
     '''Returns the parsed command line options.'''
     num_cores = psutil.cpu_count(logical=False)
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('-i', type=str, required=False, help='path-to-input-file') #default=nucleotide
+    parser.add_argument('-i', type=str, required=False, help='path-to-input-file')
     parser.add_argument('-f', type=str, required=False, help='path-to-folder-containing-input-files')
     parser.add_argument('-k', type=int, required = True, help='kmer length')
-    parser.add_argument('-n', type=int, default=num_cores, help='no of cores [auto detect]')  # no of cores to use
-    parser.add_argument('-c', type=int, default=10, help='minimum kmer count [10]')  # minimum kmer count to report
+    parser.add_argument('-n', type=int, default=num_cores, help='no of cores [auto detect]')
+    parser.add_argument('-c', type=int, default=10, help='minimum kmer count [10]')
     parser.add_argument('-prod', action='store_true', help='run Prodigal on fasta files')
     parser.add_argument('-fgs', action='store_true', help='run FragGeneScanRS on fasta files')
     parser.add_argument('-s', type=int, default=100, required=False, help='Split into x MB files. [100]')
@@ -50,6 +50,7 @@ def parseargs():
     parser.add_argument('-skipclean', action='store_true', help='skip trimming of fastq files')
     parser.add_argument('-toupper', action='store_true', help='convert all input sequences to uppercase')
     parser.add_argument('-category_file', type=str, default=None, help=argparse.SUPPRESS)
+    parser.add_argument('-pca', action='store_true', help='create interactive PCA plot of the samples (minimum of 4 samples required)')
 
     # Process arguments
     args = parser.parse_args()
@@ -130,7 +131,7 @@ def run_mercat2(basename:str, files:list, out_file:os.PathLike, kmer, min_count,
 
 ## Create Figures
 #
-def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=None, class_file=None):
+def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=None, class_file=None, pca=False):
     print(f"\nCreating {type_string} Graphs")
 
     figPlots = dict()
@@ -148,7 +149,7 @@ def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=N
     print(f"Virtual Memory {mem_use()}GB")
 
     # PCA
-    if len(tsv_list) > 3:
+    if pca and len(tsv_list) > 3:
         print("\nRunning PCA")
         start_time = timeit.default_timer()
 
@@ -190,6 +191,7 @@ def mercat_main():
     m_skipclean = __args__.skipclean
     m_toupper = __args__.toupper
     m_class_file = __args__.category_file
+    m_pca = __args__.pca
     
     if os.path.exists(m_outputfolder) and os.path.isdir(m_outputfolder):
         shutil.rmtree(m_outputfolder)
@@ -239,7 +241,7 @@ def mercat_main():
                 if f_ext in FILE_EXT_FASTQ:
                     jobsFastq += [fastq_to_fasta.remote(file, cleanpath, basename, m_skipclean)]
                 elif f_ext in FILE_EXT_NUCLEOTIDE:
-                    jobsContig += [clean_contig.remote(file, cleanpath, basename)]
+                    jobsContig += [clean_contig.remote(file, cleanpath, basename, m_toupper)]
                     command = [ 'countAssembly.py', '-f', file, '-i', '100' ]
                     statfile = os.path.join(m_outputfolder, 'stats', f'{basename}.txt')
                     os.makedirs(os.path.join(m_outputfolder, 'stats'), exist_ok=True)
@@ -324,7 +326,7 @@ def mercat_main():
         print(f"Virtual Memory {mem_use()}GB")
         # Stacked Bar Plots (top kmer counts)
         if len(tsv_list):
-            figPlots.update(createFigures(tsv_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file))
+            figPlots.update(createFigures(tsv_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file, m_pca))
         for basename,filename in tsv_list.items():
             outfile = os.path.join(report_dir, f'diversity-nucleotide-{basename}.tsv')
             jobsDiversity += [diversity.remote(filename, outfile)]
@@ -426,7 +428,7 @@ def mercat_main():
         print(f"Time to count {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
         print(f"Virtual Memory {mem_use()}GB")
         if len(tsv_list):
-            figPlots.update(createFigures(tsv_list, sample_type, m_outputfolder, m_lowmem, m_class_file))
+            figPlots.update(createFigures(tsv_list, sample_type, m_outputfolder, m_lowmem, m_class_file, m_pca))
         for basename,filename in tsv_list.items():
             outfile = os.path.join(report_dir, f'diversity-{sample_type}-{basename}.tsv')
             jobsDiversity += [diversity.remote(filename, outfile)]
