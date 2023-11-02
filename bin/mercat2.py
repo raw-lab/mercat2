@@ -50,7 +50,7 @@ def parseargs():
     parser.add_argument('-skipclean', action='store_true', help='skip trimming of fastq files')
     parser.add_argument('-toupper', action='store_true', help='convert all input sequences to uppercase')
     parser.add_argument('-category_file', type=str, default=None, help=argparse.SUPPRESS)
-    parser.add_argument('-pca', action='store_true', help='create interactive PCA plot of the samples (minimum of 4 samples required)')
+    parser.add_argument('-pca', action='store_true', help='create interactive PCA plot of the samples (minimum of 4 fasta files required)')
 
     # Process arguments
     args = parser.parse_args()
