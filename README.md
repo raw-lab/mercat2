@@ -156,6 +156,6 @@ MerCat2: a versatile k-mer counter and diversity estimator for database-independ
 
 ### CONTACT
 
-Please send all queries to [Jose Luis Figueroa](mailto:jlfiguer@uncc.edu) <br />
-[Dr. Richard Allen White III](mailto:rwhit101@uncc.edu)<br />
+Please send all queries to [Jose Luis Figueroa](mailto:jlfiguer@charlotte.edu) <br />
+[Dr. Richard Allen White III](mailto:rwhit101@charlotte.edu)<br />
 Or [open an issue](https://github.com/raw-lab/mercat2/issues)
