@@ -14,7 +14,7 @@ def package_files(directory):
 
 setuptools.setup(
     name = "mercat2",
-    version = "1.2",
+    version = "1.3",
     author = "Jose Luis Figueroa, Richard White III",
     author_email = "jlfiguer@charlotte.edu",
     description = "versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis",

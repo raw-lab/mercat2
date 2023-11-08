@@ -3,7 +3,7 @@
 
 """mercat2.py: Python code for Parallel k-mer counting."""
 
-__version__     = "1.2"
+__version__     = "1.3"
 __author__      = "Jose L. Figueroa, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
