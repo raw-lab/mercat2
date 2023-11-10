@@ -4,7 +4,9 @@
 
 import os
 import sys
+from pathlib import Path
 import pkg_resources as pkg
+import gzip
 import shutil
 import subprocess
 import tarfile
@@ -60,14 +62,17 @@ def removeN(fasta:str, outpath:str, toupper:bool):
 
     os.makedirs(outpath, exist_ok=True)    
 
-    outFasta, ext = os.path.splitext(fasta)
-    outFasta = os.path.basename(outFasta) + "_clean"+ ext
-    outFasta = os.path.join(outpath, outFasta)
+    GZIP = fasta.endswith('.gz')
+
+    basename = Path(fasta).stem.split('.')[0]
+    ext = ''.join(Path(fasta).suffixes)
+    outFasta = Path(outpath, f"{basename}_clean{ext}")
 
     NStats = dict()
     gc_count = 0
     total_length = 0
-    with open(fasta, 'r') as reader, open(outFasta, 'w') as writer:
+    reader = gzip.open(fasta, 'rt') if GZIP else open(fasta, 'r')
+    with gzip.open(outFasta, 'wt') as writer:
         line = reader.readline()
         while line:
             line = line.strip()
@@ -107,6 +112,7 @@ def removeN(fasta:str, outpath:str, toupper:bool):
                     total_length += len(sequence)
                 continue #already got next line, next item in loop
             line = reader.readline()
+    reader.close()
     NStats['GC Content'] = 100.0 * gc_count / total_length
 
     return (os.path.abspath(outFasta), NStats)
@@ -160,6 +166,9 @@ def trim(fq_file:str, outpath:str, f_name:str):
     trim_fq = os.path.join(outpath, f_name+"_trim.fastq")
     if check_command('fastp'):
         subprocess.run(['fastp', '-i', fq_file, '-o', trim_fq], stdout=open(f'{outpath}/{f_name}-trim.stdout', 'w'), stderr=open(f'{outpath}/{f_name}-trim.stderr', 'w'))
+    else:
+        print("WARNING: Continuing without trim")
+        return fq_file
     return trim_fq
 
 def fq2fa(fq_file:str, outpath:str, f_name:str):
@@ -176,10 +185,15 @@ def fq2fa(fq_file:str, outpath:str, f_name:str):
     '''
 
     os.makedirs(outpath, exist_ok=True)
-    fna_file = os.path.join(outpath, f_name+".fna")
+    fna_file = os.path.join(outpath, f_name+".fna.gz")
 
     # convert fastq to fasta
-    subprocess.run(['sed', '-n', '1~4s/^@/>/p;2~4p', fq_file], stdout=open(fna_file, 'w'))
+    cat = 'zcat' if fq_file.endswith('.gz') else 'cat'
+    pcat = subprocess.Popen([cat, fq_file], stdout=subprocess.PIPE)
+    proc = subprocess.Popen(['sed', '-n', '1~4s/^@/>/p;2~4p'], stdin=pcat.stdout, stdout=subprocess.PIPE, text=True)
+    with gzip.open(fna_file, 'wt') as writer:
+        for line in proc.stdout:
+            writer.write(line)
     return os.path.abspath(fna_file)
 
 

@@ -8,6 +8,7 @@ __author__      = "Jose L. Figueroa, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
 import os
+from pathlib import Path
 import subprocess
 import shutil
 import psutil
@@ -21,9 +22,9 @@ from mercat2_lib import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_
 
 
 # GLOBAL VARIABLES
-FILE_EXT_FASTQ = ['.fq', '.fastq']
-FILE_EXT_NUCLEOTIDE = [".fasta", ".fa", ".fna", ".ffn"]
-FILE_EXT_PROTEIN = [".faa"]
+FILE_EXT_FASTQ = [".fq", ".fastq", ".fq.gz", ".fastq.gz"]
+FILE_EXT_NUCLEOTIDE = [".fasta", ".fa", ".fna", ".ffn", ".fasta.gz", ".fa.gz", ".fna.gz", ".ffn.gz"]
+FILE_EXT_PROTEIN = [".faa", ".faa.gz"]
 
 
 # RAM Usage
@@ -237,7 +238,8 @@ def mercat_main():
         for fname in os.listdir(m_inputfolder):
             file = os.path.join(m_inputfolder, fname)
             if not os.path.isdir(file):
-                basename, f_ext = os.path.splitext(fname)
+                basename = Path(fname).stem.split('.')[0]
+                f_ext = ''.join(Path(fname).suffixes)
                 if f_ext in FILE_EXT_FASTQ:
                     jobsFastq += [fastq_to_fasta.remote(file, cleanpath, basename, m_skipclean)]
                 elif f_ext in FILE_EXT_NUCLEOTIDE:
@@ -252,9 +254,11 @@ def mercat_main():
 
     else:
         basepath = os.path.abspath(os.path.expanduser(m_inputfile))
-        basename,f_ext = os.path.splitext(os.path.basename(basepath))
+        basename = Path(basepath).stem.split('.')[0]
+        f_ext = ''.join(Path(basepath).suffixes)
+        print(basename, f_ext)
         if f_ext in FILE_EXT_FASTQ:
-            jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename, m_toupper)]
+            jobsFastq += [fastq_to_fasta.remote(m_inputfile, cleanpath, basename, m_skipclean)]
         elif f_ext in FILE_EXT_NUCLEOTIDE:
             jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename, m_toupper)]
             command = [ 'countAssembly.py', '-f', m_inputfile, '-i', '100' ]

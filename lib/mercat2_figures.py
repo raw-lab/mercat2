@@ -6,6 +6,7 @@ import os
 import psutil
 import re
 import base64
+import gzip
 import pkg_resources as pkg
 import pandas as pd
 import plotly.graph_objs as go
@@ -152,32 +153,33 @@ def plot_sample_metrics(protein_samples: dict, tsv_out):
     for basename,files in protein_samples.items():
         for file in files:
             dfMetrics = pd.DataFrame()
-            with open(file) as reader:
-                line = reader.readline()
-                while line:
-                    line = line.strip()
-                    line = line.rstrip('*')
-                    if line.startswith('>'):
-                        name = line[1:]
-                        sequence = ""
-                        line = reader.readline()
-                        while line:
-                            line = line.strip()
-                            line = line.rstrip('*')
-                            if line.startswith('>'):
-                                break
-                            sequence += line
-                            line = reader.readline()
-                        if len(sequence):
-                            dfMetrics.at[name, 'Name'] = name.split()[0]
-                            dfMetrics.at[name, 'Length'] = len(sequence)
-                            dfMetrics.at[name, 'PI'] = mercat2_metrics.predict_isoelectric_point_ProMoST(sequence)
-                            dfMetrics.at[name, 'MW'] = mercat2_metrics.calculate_MW(sequence)
-                            dfMetrics.at[name, 'Hydro'] = mercat2_metrics.calculate_hydro(sequence)
-                        else:
-                            print("WARNING: Empty Sequence:", basename, name, sequence)
-                        continue #already got next line, next item in loop
+            reader = gzip.open(file, 'rt') if file.endswith('.gz') else open(file, 'r')
+            line = reader.readline()
+            while line:
+                line = line.strip()
+                line = line.rstrip('*')
+                if line.startswith('>'):
+                    name = line[1:]
+                    sequence = ""
                     line = reader.readline()
+                    while line:
+                        line = line.strip()
+                        line = line.rstrip('*')
+                        if line.startswith('>'):
+                            break
+                        sequence += line
+                        line = reader.readline()
+                    if len(sequence):
+                        dfMetrics.at[name, 'Name'] = name.split()[0]
+                        dfMetrics.at[name, 'Length'] = len(sequence)
+                        dfMetrics.at[name, 'PI'] = mercat2_metrics.predict_isoelectric_point_ProMoST(sequence)
+                        dfMetrics.at[name, 'MW'] = mercat2_metrics.calculate_MW(sequence)
+                        dfMetrics.at[name, 'Hydro'] = mercat2_metrics.calculate_hydro(sequence)
+                    else:
+                        print("WARNING: Empty Sequence:", basename, name, sequence)
+                    continue #already got next line, next item in loop
+                line = reader.readline()
+            reader.close()
 
             dfMetrics.sort_values(by='Length', ascending=False, inplace=True)
             dfMetrics.to_csv(tsv_out, sep='\t', mode='a', index=True, header=False)
