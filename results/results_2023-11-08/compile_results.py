@@ -119,7 +119,7 @@ for dataset in datasets:
                 outlines.append(f"{dataset},{kmer},{program},{thread},{time_avg},{time_dev},{ram_avg},{ram_dev},{disk_avg},{disk_dev}\n")
 
 column_names = "Dataset,Kmer Length,Program,Threads,Time (Seconds),time-dev,RAM (M),ram-dev,Disk (M),disk-dev\n"
-with open("result.csv", 'w') as writefile:
+with open("results.csv", 'w') as writefile:
     writefile.write(column_names)
     writefile.writelines(outlines)
 
