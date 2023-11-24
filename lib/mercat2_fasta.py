@@ -198,7 +198,7 @@ def fq2fa(fq_file:str, outpath:str, f_name:str):
 
 
 ## ORF Call Prodigal
-def orf_call(basename:str, file:str, outpath:str):
+def orf_call(basename:str, fna_in:str, outpath:str):
     '''Finds the ORFs in the nucleotides and converts to an amino acid file.
     Uses prodigal for ORF calling.
     Produces a protein ffa file.
@@ -206,35 +206,33 @@ def orf_call(basename:str, file:str, outpath:str):
 
     Parameters:
         basename (str): The base name of the file for output files.
-        file (str): The path to a nucleotide fasta file.
+        fna_in (str): The path to a nucleotide fasta file.
         outpath (str): The path to save the output files.
 
     Returns:
-        tuple: A tuple with the name, and path to the protein faa file.
+        str: The path to the protein faa file.
     '''
 
     if not check_command('prodigal'):
         exit()
 
     outpath = os.path.abspath(outpath)
-    out_pro = os.path.join(outpath, basename+"_pro.faa")
-    #out_gff = os.path.join(outpath, basename+".gff")
-    #out_nuc = os.path.join(outpath, basename+"_nuc.fna")
-    #prod_cmd = f"prodigal -i {file} -o {out_gff} -a {out_pro} -f gff -p meta"
+    faa_tmp = os.path.join(outpath, basename+"_pro.faa")
+    faa_out = faa_tmp # os.path.join(outpath, basename+"_pro.faa.gz")
     prod_cmd = ['prodigal',
-                '-i', file,
-                '-a', out_pro,
-                #'-o', out_gff,
-                #'-f', 'gff',
+                '-i', fna_in,
+                '-a', faa_out,
                 '-p', 'meta']
     os.makedirs(outpath, exist_ok=True)
-    with open(f'{outpath}/{basename}.stdout', 'w') as stdout, open(f'{outpath}/{basename}.stderr', 'w') as stderr:
-        subprocess.run(prod_cmd, stdout=stdout, stderr=stderr)
-    return out_pro
+    pcat = subprocess.Popen(['zcat', fna_in], text=True, stdout=subprocess.PIPE)
+    with open(f'{outpath}/{basename}.gbk', 'w') as stdout, open(f'{outpath}/{basename}.stderr', 'w') as stderr:
+        subprocess.run(prod_cmd, stdout=stdout, stderr=stderr, stdin=pcat.stdout)
+
+    return faa_out
 
 
 ## ORF Call FragGeneScanRS
-def orf_call_fgs(basename:str, file:str, outpath:str):
+def orf_call_fgs(basename:str, fna_in:str, outpath:str):
     '''Finds the ORFs in the nucleotides and converts to an amino acid file.
     Uses FragGeneScanRS for ORF calling.
     Produces a protein ffa file.
@@ -242,7 +240,7 @@ def orf_call_fgs(basename:str, file:str, outpath:str):
 
     Parameters:
         basename (str): The base name of the file for output files.
-        file (str): The path to a nucleotide fasta file.
+        fna_in (str): The path to a nucleotide fasta file.
         outpath (str): The path to save the output files.
 
     Returns:
@@ -263,15 +261,17 @@ def orf_call_fgs(basename:str, file:str, outpath:str):
 
     outpath = os.path.abspath(outpath)
     os.makedirs(outpath, exist_ok=True)
-    faa_out = os.path.join(outpath, f'{basename}.faa')
+    faa_out = os.path.join(outpath, f'{basename}.faa.gz')
 
     command = ['FragGeneScanRs',
                 '--complete',
-                '-s', file,
                 '-t', 'complete',
-                '-a', faa_out,
                 ]
 
-    subprocess.run(command)
+    pcat = subprocess.Popen(['zcat', fna_in], text=True, stdout=subprocess.PIPE)
+    pout = subprocess.Popen(command, text=True, stdin=pcat.stdout, stdout=subprocess.PIPE)
+    with gzip.open(faa_out, 'wt') as writer:
+        for line in pout.stdout:
+            writer.write(line)
 
     return (basename, f"{faa_out}")

@@ -101,8 +101,9 @@ def chunk_files(name:str, file:str, chunk_size:int, outpath:str):
     return (name, all_chunks)
 
 @ray.remote(num_cpus=1)
-def diversity(infile, outfile):
-    return mercat2_diversity.compute_alpha_beta_diversity(infile, outfile)
+def diversity(key, infile, outfile, sample_type):
+    mercat2_diversity.compute_alpha_beta_diversity(key, infile, outfile)
+    return (sample_type, outfile)
 @ray.remote(num_cpus=1)
 def countKmers(file, kmer, min_count):
     return mercat2_kmers.find_kmers(file, kmer, min_count)
@@ -332,8 +333,9 @@ def mercat_main():
         if len(tsv_list):
             figPlots.update(createFigures(tsv_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file, m_pca))
         for basename,filename in tsv_list.items():
-            outfile = os.path.join(report_dir, f'diversity-nucleotide-{basename}.tsv')
-            jobsDiversity += [diversity.remote(filename, outfile)]
+            os.makedirs(os.path.join(report_dir, 'diversity'), exist_ok=True)
+            outfile = os.path.join(report_dir, 'diversity', f'nucleotide-{basename}.tsv')
+            jobsDiversity += [diversity.remote(basename, filename, outfile, 'Nucleotide')]
         if len(gc_content) > 0:
             figPlots['Sample GC Summary'] = mercat2_figures.GC_plot_sample(gc_content)
 
@@ -434,8 +436,9 @@ def mercat_main():
         if len(tsv_list):
             figPlots.update(createFigures(tsv_list, sample_type, m_outputfolder, m_lowmem, m_class_file, m_pca))
         for basename,filename in tsv_list.items():
-            outfile = os.path.join(report_dir, f'diversity-{sample_type}-{basename}.tsv')
-            jobsDiversity += [diversity.remote(filename, outfile)]
+            os.makedirs(os.path.join(report_dir, 'diversity'), exist_ok=True)
+            outfile = os.path.join(report_dir, 'diversity', f'{sample_type}-{basename}.tsv')
+            jobsDiversity += [diversity.remote(basename, filename, outfile, sample_type)]
 
 
     # Plot Data
@@ -453,12 +456,29 @@ def mercat_main():
     while jobsQC:
         ready,jobsQC = ray.wait(jobsQC)
 
-    ready,jobsDiversity = ray.wait(jobsDiversity, timeout=0, num_returns=len(jobsDiversity))
-    if jobsDiversity:
-        print(f"Waiting for ({len(jobsDiversity)}) remaining Diversity Metrics jobs")
-        while jobsDiversity:
-            ready,jobsDiversity = ray.wait(jobsDiversity, timeout=0, num_returns=len(jobsDiversity))
-    
+    print("Gathering Diversity Metrics")
+    mergedDiversity = dict()
+    while jobsDiversity:
+        ready,jobsDiversity = ray.wait(jobsDiversity)
+        if ready:
+            key,outfile = ray.get(ready[0])
+            if key not in mergedDiversity:
+                mergedDiversity[key] = []
+            mergedDiversity[key].append(outfile)
+
+    import pandas as pd
+    for key,val in mergedDiversity.items():
+        first = True
+        for filename in val:
+            if first:
+                first = False
+                df = pd.read_csv(filename, sep='\t')
+            else:
+                df2 = pd.read_csv(filename, sep='\t')
+                df = pd.merge(df, df2, on="Metric")
+        outfile = Path(report_dir, f'diversity-{key}.tsv')
+        df.to_csv(outfile, sep='\t', index=False)
+
     print("\nFinished MerCat2 Pipeline")
 
     return

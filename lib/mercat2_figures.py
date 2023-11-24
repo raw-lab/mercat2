@@ -300,6 +300,27 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
     )
     figPCA.update_layout(font=dict(color="Black"),
         margin=dict(l=0, r=0, t=0, b=0),)
+    figPCA.update_layout(scene = dict(
+        xaxis = dict(
+            backgroundcolor="White",
+            gridcolor="LightGray",
+            showbackground=False,
+            zerolinecolor="LightGray"
+            ),
+        yaxis = dict(
+            backgroundcolor="White",
+            gridcolor="LightGray",
+            showbackground=False,
+            zerolinecolor="LightGray"
+            ),
+        zaxis = dict(
+            backgroundcolor="White",
+            gridcolor="LightGray",
+            showbackground=False,
+            zerolinecolor="LightGray"
+            ),
+        ))
+
     figPCA.write_image(f"{out_path}/pca{'_incremental' if lowmem else ''}.png")
     
     print(f"Time to compute 3D PCA: {round(timeit.default_timer() - start_time,2)} seconds")
