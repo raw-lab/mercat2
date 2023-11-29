@@ -1,0 +1,10 @@
+Metric	RW1_pro
+shannon	3.44
+simpson	0.91
+simpson_e	0.98
+goods_coverage	1.0
+fisher_alpha	2.8
+dominance	0.09
+chao1	11.0
+chao1_ci	[11, 11.01]
+ace	11.0

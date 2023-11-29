@@ -1,0 +1,10 @@
+Metric	GIC31
+shannon	7.11
+simpson	0.99
+simpson_e	0.93
+goods_coverage	1.0
+fisher_alpha	36.91
+dominance	0.01
+chao1	142.0
+chao1_ci	[142, 142.06]
+ace	142.0

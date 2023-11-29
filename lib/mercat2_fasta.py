@@ -4,7 +4,9 @@
 
 import os
 import sys
+from pathlib import Path
 import pkg_resources as pkg
+import gzip
 import shutil
 import subprocess
 import tarfile
@@ -60,14 +62,17 @@ def removeN(fasta:str, outpath:str, toupper:bool):
 
     os.makedirs(outpath, exist_ok=True)    
 
-    outFasta, ext = os.path.splitext(fasta)
-    outFasta = os.path.basename(outFasta) + "_clean"+ ext
-    outFasta = os.path.join(outpath, outFasta)
+    GZIP = fasta.endswith('.gz')
+
+    basename = Path(fasta).stem.split('.')[0]
+    ext = ''.join(Path(fasta).suffixes)
+    outFasta = Path(outpath, f"{basename}_clean.fna.gz")
 
     NStats = dict()
     gc_count = 0
     total_length = 0
-    with open(fasta, 'r') as reader, open(outFasta, 'w') as writer:
+    reader = gzip.open(fasta, 'rt') if GZIP else open(fasta, 'r')
+    with gzip.open(outFasta, 'wt') as writer:
         line = reader.readline()
         while line:
             line = line.strip()
@@ -107,6 +112,7 @@ def removeN(fasta:str, outpath:str, toupper:bool):
                     total_length += len(sequence)
                 continue #already got next line, next item in loop
             line = reader.readline()
+    reader.close()
     NStats['GC Content'] = 100.0 * gc_count / total_length
 
     return (os.path.abspath(outFasta), NStats)
@@ -160,6 +166,9 @@ def trim(fq_file:str, outpath:str, f_name:str):
     trim_fq = os.path.join(outpath, f_name+"_trim.fastq")
     if check_command('fastp'):
         subprocess.run(['fastp', '-i', fq_file, '-o', trim_fq], stdout=open(f'{outpath}/{f_name}-trim.stdout', 'w'), stderr=open(f'{outpath}/{f_name}-trim.stderr', 'w'))
+    else:
+        print("WARNING: Continuing without trim")
+        return fq_file
     return trim_fq
 
 def fq2fa(fq_file:str, outpath:str, f_name:str):
@@ -176,15 +185,20 @@ def fq2fa(fq_file:str, outpath:str, f_name:str):
     '''
 
     os.makedirs(outpath, exist_ok=True)
-    fna_file = os.path.join(outpath, f_name+".fna")
+    fna_file = os.path.join(outpath, f_name+".fna.gz")
 
     # convert fastq to fasta
-    subprocess.run(['sed', '-n', '1~4s/^@/>/p;2~4p', fq_file], stdout=open(fna_file, 'w'))
+    cat = 'zcat' if fq_file.endswith('.gz') else 'cat'
+    pcat = subprocess.Popen([cat, fq_file], stdout=subprocess.PIPE)
+    proc = subprocess.Popen(['sed', '-n', '1~4s/^@/>/p;2~4p'], stdin=pcat.stdout, stdout=subprocess.PIPE, text=True)
+    with gzip.open(fna_file, 'wt') as writer:
+        for line in proc.stdout:
+            writer.write(line)
     return os.path.abspath(fna_file)
 
 
 ## ORF Call Prodigal
-def orf_call(basename:str, file:str, outpath:str):
+def orf_call(basename:str, fna_in:str, outpath:str):
     '''Finds the ORFs in the nucleotides and converts to an amino acid file.
     Uses prodigal for ORF calling.
     Produces a protein ffa file.
@@ -192,35 +206,32 @@ def orf_call(basename:str, file:str, outpath:str):
 
     Parameters:
         basename (str): The base name of the file for output files.
-        file (str): The path to a nucleotide fasta file.
+        fna_in (str): The path to a nucleotide fasta file.
         outpath (str): The path to save the output files.
 
     Returns:
-        tuple: A tuple with the name, and path to the protein faa file.
+        str: The path to the protein faa file.
     '''
 
     if not check_command('prodigal'):
         exit()
 
     outpath = os.path.abspath(outpath)
-    out_pro = os.path.join(outpath, basename+"_pro.faa")
-    #out_gff = os.path.join(outpath, basename+".gff")
-    #out_nuc = os.path.join(outpath, basename+"_nuc.fna")
-    #prod_cmd = f"prodigal -i {file} -o {out_gff} -a {out_pro} -f gff -p meta"
+    faa_tmp = os.path.join(outpath, basename+"_pro.faa")
+    faa_out = faa_tmp # os.path.join(outpath, basename+"_pro.faa.gz")
     prod_cmd = ['prodigal',
-                '-i', file,
-                '-a', out_pro,
-                #'-o', out_gff,
-                #'-f', 'gff',
+                '-a', faa_out,
                 '-p', 'meta']
     os.makedirs(outpath, exist_ok=True)
-    with open(f'{outpath}/{basename}.stdout', 'w') as stdout, open(f'{outpath}/{basename}.stderr', 'w') as stderr:
-        subprocess.run(prod_cmd, stdout=stdout, stderr=stderr)
-    return out_pro
+    pcat = subprocess.Popen(['zcat', fna_in], text=True, stdout=subprocess.PIPE)
+    with open(f'{outpath}/{basename}.gbk', 'w') as stdout, open(f'{outpath}/{basename}.stderr', 'w') as stderr:
+        subprocess.run(prod_cmd, stdout=stdout, stderr=stderr, stdin=pcat.stdout)
+
+    return (basename, faa_out)
 
 
 ## ORF Call FragGeneScanRS
-def orf_call_fgs(basename:str, file:str, outpath:str):
+def orf_call_fgs(basename:str, fna_in:str, outpath:str):
     '''Finds the ORFs in the nucleotides and converts to an amino acid file.
     Uses FragGeneScanRS for ORF calling.
     Produces a protein ffa file.
@@ -228,7 +239,7 @@ def orf_call_fgs(basename:str, file:str, outpath:str):
 
     Parameters:
         basename (str): The base name of the file for output files.
-        file (str): The path to a nucleotide fasta file.
+        fna_in (str): The path to a nucleotide fasta file.
         outpath (str): The path to save the output files.
 
     Returns:
@@ -249,15 +260,17 @@ def orf_call_fgs(basename:str, file:str, outpath:str):
 
     outpath = os.path.abspath(outpath)
     os.makedirs(outpath, exist_ok=True)
-    faa_out = os.path.join(outpath, f'{basename}.faa')
+    faa_out = os.path.join(outpath, f'{basename}.faa.gz')
 
     command = ['FragGeneScanRs',
                 '--complete',
-                '-s', file,
                 '-t', 'complete',
-                '-a', faa_out,
                 ]
 
-    subprocess.run(command)
+    pcat = subprocess.Popen(['zcat', fna_in], text=True, stdout=subprocess.PIPE)
+    pout = subprocess.Popen(command, text=True, stdin=pcat.stdout, stdout=subprocess.PIPE)
+    with gzip.open(faa_out, 'wt') as writer:
+        for line in pout.stdout:
+            writer.write(line)
 
-    return (basename, f"{faa_out}")
+    return (basename, faa_out)

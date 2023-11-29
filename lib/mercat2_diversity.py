@@ -6,7 +6,7 @@ import ray
 from skbio.diversity import alpha as skbio_alpha
 
 
-def compute_alpha_beta_diversity(counts_tsv, out_file):
+def compute_alpha_beta_diversity(basename, counts_tsv, out_file):
 
     @ray.remote(num_cpus=1)
     def get(func, count):
@@ -34,6 +34,7 @@ def compute_alpha_beta_diversity(counts_tsv, out_file):
             results[key] = value
 
     with open(out_file, 'w') as writer:
+        print('Metric', basename, sep='\t', file=writer)
         for func in ['shannon', 'simpson', 'simpson_e', 'goods_coverage', 'fisher_alpha', 'dominance', 'chao1', 'chao1_ci', 'ace']:
             if func not in results:
                 continue

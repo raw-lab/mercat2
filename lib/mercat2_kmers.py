@@ -2,6 +2,8 @@
 """mercat2_kmers.py: Module for calculating k-mer counts
 """
 
+import gzip
+
 ## Calculate k-mer count
 #
 def calculateKmerCount(seq:str, kmer:int) -> dict:
@@ -40,29 +42,33 @@ def find_kmers(file:str, kmer:int, min_count:int):
 
     num = 0
     kmerlist = dict()
-    with open(file, 'r') as f:
-        seq = ""
-        for line in f:
-            line = line.strip()
-            if line.startswith(">"):
-                num += 1
-                if seq:
-                    # count k-mers
-                    for i in range((len(seq) - kmer) + 1):
-                        k = seq[i:i+kmer]
-                        if k not in kmerlist:
-                            kmerlist[k] = 0
-                        kmerlist[k] += 1
-                    seq = ""
-            else:
-                seq += line.replace("*","")
-        # Count last sequence
-        for i in range((len(seq) - kmer) + 1):
-            k = seq[i:i+kmer]
-            if k not in kmerlist:
-                kmerlist[k] = 0
-            kmerlist[k] += 1
-    
+
+    f = gzip.open(file, 'rt') if file.endswith('.gz') else open(file, 'r')
+
+    seq = ""
+    for line in f:
+        line = line.strip()
+        if line.startswith(">"):
+            num += 1
+            if seq:
+                # count k-mers
+                for i in range((len(seq) - kmer) + 1):
+                    k = seq[i:i+kmer]
+                    if k not in kmerlist:
+                        kmerlist[k] = 0
+                    kmerlist[k] += 1
+                seq = ""
+        else:
+            seq += line.replace("*","")
+    # Count last sequence
+    for i in range((len(seq) - kmer) + 1):
+        k = seq[i:i+kmer]
+        if k not in kmerlist:
+            kmerlist[k] = 0
+        kmerlist[k] += 1
+
+    f.close()
+
     significant_kmers = dict()
     for k,v in kmerlist.items():
         if kmerlist[k] >= min_count:

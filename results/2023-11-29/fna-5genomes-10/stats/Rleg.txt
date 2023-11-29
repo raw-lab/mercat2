@@ -1,0 +1,27 @@
+
+217700:217799	1
+405200:405299	1
+564600:564699	1
+597200:597299	1
+1291900:1291999	1
+4760700:4760799	1
+
+Total length of sequence:	7837567 bp
+Total number of contigs:	6
+Max sequence length:	4760731
+Min sequence length:	217776
+
+N25 stats:			25% of total sequence length is contained in the (L25) 1 sequences >= 4760731 bp
+N50 stats:			50% of total sequence length is contained in the (L50) 1 sequences >= 4760731 bp
+N75 stats:			75% of total sequence length is contained in the (L75) 2 sequences >= 1291920 bp
+N90 stats:			90% of total sequence length is contained in the (L90) 4 sequences >= 564641 bp
+
+*NG Stats using genome length of 7837567.
+NG25 stats:			25% of total genome length is contained in the 1 sequences >= 4760731 bp
+NG50 stats:			50% of total genome length is contained in the 1 sequences >= 4760731 bp
+NG75 stats:			75% of total genome length is contained in the 2 sequences >= 1291920 bp
+NG90 stats:			90% of total genome length is contained in the 4 sequences >= 564641 bp
+
+Total GC count:			4742699 bp
+GC %:				60.51 %
+* Without a reference genome we estimate the size using the assembled length.

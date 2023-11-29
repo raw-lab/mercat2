@@ -6,6 +6,7 @@ import os
 import psutil
 import re
 import base64
+import gzip
 import pkg_resources as pkg
 import pandas as pd
 import plotly.graph_objs as go
@@ -152,32 +153,33 @@ def plot_sample_metrics(protein_samples: dict, tsv_out):
     for basename,files in protein_samples.items():
         for file in files:
             dfMetrics = pd.DataFrame()
-            with open(file) as reader:
-                line = reader.readline()
-                while line:
-                    line = line.strip()
-                    line = line.rstrip('*')
-                    if line.startswith('>'):
-                        name = line[1:]
-                        sequence = ""
-                        line = reader.readline()
-                        while line:
-                            line = line.strip()
-                            line = line.rstrip('*')
-                            if line.startswith('>'):
-                                break
-                            sequence += line
-                            line = reader.readline()
-                        if len(sequence):
-                            dfMetrics.at[name, 'Name'] = name.split()[0]
-                            dfMetrics.at[name, 'Length'] = len(sequence)
-                            dfMetrics.at[name, 'PI'] = mercat2_metrics.predict_isoelectric_point_ProMoST(sequence)
-                            dfMetrics.at[name, 'MW'] = mercat2_metrics.calculate_MW(sequence)
-                            dfMetrics.at[name, 'Hydro'] = mercat2_metrics.calculate_hydro(sequence)
-                        else:
-                            print("WARNING: Empty Sequence:", basename, name, sequence)
-                        continue #already got next line, next item in loop
+            reader = gzip.open(file, 'rt') if file.endswith('.gz') else open(file, 'r')
+            line = reader.readline()
+            while line:
+                line = line.strip()
+                line = line.rstrip('*')
+                if line.startswith('>'):
+                    name = line[1:]
+                    sequence = ""
                     line = reader.readline()
+                    while line:
+                        line = line.strip()
+                        line = line.rstrip('*')
+                        if line.startswith('>'):
+                            break
+                        sequence += line
+                        line = reader.readline()
+                    if len(sequence):
+                        dfMetrics.at[name, 'Name'] = name.split()[0]
+                        dfMetrics.at[name, 'Length'] = len(sequence)
+                        dfMetrics.at[name, 'PI'] = mercat2_metrics.predict_isoelectric_point_ProMoST(sequence)
+                        dfMetrics.at[name, 'MW'] = mercat2_metrics.calculate_MW(sequence)
+                        dfMetrics.at[name, 'Hydro'] = mercat2_metrics.calculate_hydro(sequence)
+                    else:
+                        print("WARNING: Empty Sequence:", basename, name, sequence)
+                    continue #already got next line, next item in loop
+                line = reader.readline()
+            reader.close()
 
             dfMetrics.sort_values(by='Length', ascending=False, inplace=True)
             dfMetrics.to_csv(tsv_out, sep='\t', mode='a', index=True, header=False)
@@ -200,7 +202,7 @@ def plot_sample_metrics(protein_samples: dict, tsv_out):
 
 
 # PCA
-def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
+def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None, DEBUG=False):
     '''Creates a 3D plotly scatter plot of the PCA of the given TSV File.
 
     Parameters:
@@ -220,8 +222,9 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
         reader.readline() # skip header
         for line in reader:
             names.append(re.sub(r'_protein', '', line.split()[0]))
-    print(f"\nTime to get name list: {round(timeit.default_timer() - start_time,2)} seconds")
-    print(f"Virtual Memory {mem_use()}GB")
+    if DEBUG:
+        print(f"\nTime to get name list: {round(timeit.default_timer() - start_time,2)} seconds")
+        print(f"Virtual Memory {mem_use()}GB")
 
     if lowmem is None and len(names) > chunk_size:
         lowmem = True
@@ -233,16 +236,18 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
     name_iter = iter(names)
     pca = iPCA(n_components=3, batch_size=100) if lowmem else PCA(n_components=3)
     XDF = pd.read_csv(tsv_file, sep='\t', index_col=0, chunksize=chunk_size) if lowmem else pd.read_csv(tsv_file, sep='\t', index_col=0)
-    print(f"\nTime to read TSV file: {round(timeit.default_timer() - start_time,2)} seconds")
-    print(f"Virtual Memory {mem_use()}GB")
+    if DEBUG:
+        print(f"\nTime to read TSV file: {round(timeit.default_timer() - start_time,2)} seconds")
+        print(f"Virtual Memory {mem_use()}GB")
     
     if lowmem:
         # Incremental PCA
         # Partial Fit
         for chunk in XDF:
             pca.partial_fit(chunk)
-        print(f"\nTime for iPCA partial_fit: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+        if DEBUG:
+            print(f"\nTime for iPCA partial_fit: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Virtual Memory {mem_use()}GB")
 
         # Transform
         XDF = pd.read_csv(tsv_file, sep='\t', index_col=0, chunksize=chunk_size)
@@ -254,13 +259,15 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
                     for c in row:
                         pca_out.write(f'\t{c}')
                     pca_out.write('\n')
-        print(f"\nTime for iPCA transform: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+        if DEBUG:
+            print(f"\nTime for iPCA transform: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Virtual Memory {mem_use()}GB")
     else:
         # Standard PCA
         XDF = pca.fit_transform(XDF)
-        print(f"\nTime to compute PCA fit_transform: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+        if DEBUG:
+            print(f"\nTime to compute PCA fit_transform: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Virtual Memory {mem_use()}GB")
 
         with open(pca_tsv, 'w') as pca_out:
             print('sample', 'PC1', 'PC2', 'PC3', sep='\t', file = pca_out)
@@ -269,8 +276,9 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
                 for c in row:
                     pca_out.write(f'\t{c}')
                 pca_out.write('\n')
-        print(f"Time to save PCA TSV file: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+        if DEBUG:
+            print(f"Time to save PCA TSV file: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Virtual Memory {mem_use()}GB")
 
 
     start_time = timeit.default_timer()
@@ -280,8 +288,9 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
         df_tax = pd.read_csv(class_file, sep='\t', index_col=0, names=['class'])
         XDF['class'] = XDF.index.map(df_tax['class']).fillna('NA')
         color_col = 'class'
-        print(f"\nTime to load CLASS file: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+        if DEBUG:
+            print(f"\nTime to load CLASS file: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Virtual Memory {mem_use()}GB")
     else:
         color_col = names
 
@@ -298,10 +307,32 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
     )
     figPCA.update_layout(font=dict(color="Black"),
         margin=dict(l=0, r=0, t=0, b=0),)
+    figPCA.update_layout(scene = dict(
+        xaxis = dict(
+            backgroundcolor="White",
+            gridcolor="LightGray",
+            showbackground=False,
+            zerolinecolor="LightGray"
+            ),
+        yaxis = dict(
+            backgroundcolor="White",
+            gridcolor="LightGray",
+            showbackground=False,
+            zerolinecolor="LightGray"
+            ),
+        zaxis = dict(
+            backgroundcolor="White",
+            gridcolor="LightGray",
+            showbackground=False,
+            zerolinecolor="LightGray"
+            ),
+        ))
+
     figPCA.write_image(f"{out_path}/pca{'_incremental' if lowmem else ''}.png")
     
     print(f"Time to compute 3D PCA: {round(timeit.default_timer() - start_time,2)} seconds")
-    print(f"Virtual Memory {mem_use()}GB")
+    if DEBUG:
+        print(f"Virtual Memory {mem_use()}GB")
 
     start_time = timeit.default_timer()
     figPCA2d = None
@@ -314,6 +345,7 @@ def plot_PCA(tsv_file:str, out_path:str, lowmem=None, class_file=None):
             margin=dict(l=0, r=0, t=0, b=0),)
         figPCA2d.write_image(f"{out_path}/pca2D{'_incremental' if lowmem else ''}.png")
         print(f"Time to compute 2D PCA: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+        if DEBUG:
+            print(f"Virtual Memory {mem_use()}GB")
 
     return figPCA, figPCA2d

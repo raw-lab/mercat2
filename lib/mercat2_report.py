@@ -3,6 +3,7 @@
 """
 
 import os
+import resource
 import psutil
 import re
 import base64
@@ -95,17 +96,29 @@ def write_html(outfile:str, figPlots:dict, tsv_stats:dict):
 
 # Merge TSV Files
 def merge_tsv(tsv_list:dict, out_file:os.PathLike):
+    FLIMIT = len(tsv_list) >= resource.getrlimit(resource.RLIMIT_NOFILE)[0]
     names = sorted(list(tsv_list.keys()))
     file_list = dict()
     for name in names:
-        file_list[name] = open(tsv_list[name])
-        file_list[name].readline() # skip header
+        if FLIMIT:
+            with open(tsv_list[name]) as f:
+                f.readline() # skip header
+                file_list[name] = f.tell()
+        else:
+            file_list[name] = open(tsv_list[name])
+            file_list[name].readline() # skip header
     with open(out_file, 'w') as writer:
         print("kmer", '\t'.join(names), sep='\t', file=writer)
         lines = dict()
         kmers = set()
         for name in names:
-            lines[name] = file_list[name].readline().split()
+            if FLIMIT:
+                with open(tsv_list[name]) as f:
+                    f.seek(file_list[name])
+                    lines[name] = f.readline().split()
+                    file_list[name] = f.tell()
+            else:
+                lines[name] = file_list[name].readline().split()
             kmers.add(lines[name][0])
         kmer = sorted(kmers)[0]
         while True:
@@ -118,15 +131,22 @@ def merge_tsv(tsv_list:dict, out_file:os.PathLike):
                     line.append('0')
                 else:
                     line.append(lines[name][1])
-                    lines[name] = file_list[name].readline().split()
+                    if FLIMIT:
+                        with open(tsv_list[name]) as f:
+                            f.seek(file_list[name])
+                            lines[name] = f.readline().split()
+                            file_list[name] = f.tell()
+                    else:
+                        lines[name] = file_list[name].readline().split()
                     if lines[name]:
                         kmers.add(lines[name][0])
             print('\t'.join(line), file=writer)
             if not kmers:
                 break
             kmer = sorted(kmers)[0]
-    for name in names:
-        file_list[name].close()
+    if FLIMIT:
+        for name in names:
+            file_list[name].close()
     return
 
 
@@ -134,25 +154,30 @@ def merge_tsv(tsv_list:dict, out_file:os.PathLike):
 def merge_tsv_T(tsv_list:dict, out_file:os.PathLike):
     names = sorted(list(tsv_list.keys()))#, key=lambda x: x.lower())
     header = set()
-    file_list = dict()
+    #file_list = dict()
     for name in names:
-        file_list[name] = open(tsv_list[name], 'r')
-        file_list[name].readline() # skip header
-        for line in file_list[name]:
-            kmer = line.split()[0]
-            header.add(kmer)
+        with open(tsv_list[name]) as reader:
+            #file_list[name] = open(tsv_list[name], 'r')
+            #file_list[name].readline() # skip header
+            reader.readline() # skip header
+            for line in reader:
+                kmer = line.split()[0]
+                header.add(kmer)
     
     header = list(header)
     with open(out_file, 'w') as writer:
         print('sample', '\t'.join(header), sep='\t', file=writer)
         for name in names:
-            file_list[name].seek(0)
-            file_list[name].readline() # skip header
-            counts = dict()
-            for line in file_list[name]:
-                kmer,count = line.split()
-                counts[kmer] = count
-            file_list[name].close()
+            with open(tsv_list[name]) as reader:
+                #file_list[name].seek(0)
+                #file_list[name].readline() # skip header
+                reader.readline() # skip header
+                counts = dict()
+                #for line in file_list[name]:
+                for line in reader:
+                    kmer,count = line.split()
+                    counts[kmer] = count
+                #file_list[name].close()
             writer.write(name)
             for kmer in header:
                 if kmer in counts:

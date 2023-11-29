@@ -1,0 +1,600 @@
+++ date +%Y-%m-%d
++ PRE=2023-11-29
++ STDOUT=2023-11-29/stdout.txt
++ STDERR=2023-11-29/stderr.txt
++ rm -r 2023-11-29
++ mkdir -p 2023-11-29
++ PYTHONUNBUFFERED=1
++ for chunk in 1 10
++ command time mercat2.py -k 5 -f ../data/5-genomes-fna/ -pca -prod -fgs -s 1 -o 2023-11-29/fna-5genomes-1
+2023-11-29 14:53:44,772	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+Time to load 5 files: 8.84 seconds
+Checking for large nucleotide files
+Processing Nucleotides
+Running Mercat2 using 6 cores
+Time to count 5-mers: 1.63 seconds
+
+Creating Nucleotide Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 2.13 seconds
+
+Running Prodigal on 5 files
+
+Running FragGeneScanRS on 5 files
+
+Processing Proteins (prod)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.96 seconds
+
+Creating prod Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 1.48 seconds
+Time to compute 2D PCA: 0.13 seconds
+
+Processing Proteins (fgs)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 2.04 seconds
+
+Creating fgs Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 1.53 seconds
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+53.96user 5.82system 2:35.38elapsed 38%CPU (0avgtext+0avgdata 249300maxresident)k
+0inputs+26864outputs (0major+159569minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -f ../data/5-genomes-fna_gz/ -pca -prod -fgs -s 1 -o 2023-11-29/fna-5genomes_gz-1
+2023-11-29 14:56:20,126	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+Time to load 5 files: 7.19 seconds
+Checking for large nucleotide files
+Processing Nucleotides
+Running Mercat2 using 6 cores
+Time to count 5-mers: 1.48 seconds
+
+Creating Nucleotide Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 2.13 seconds
+
+Running Prodigal on 5 files
+
+Running FragGeneScanRS on 5 files
+
+Processing Proteins (prod)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.9 seconds
+
+Creating prod Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 1.42 seconds
+Time to compute 2D PCA: 0.13 seconds
+
+Processing Proteins (fgs)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 1.46 seconds
+
+Creating fgs Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 1.48 seconds
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+52.39user 6.15system 2:33.24elapsed 38%CPU (0avgtext+0avgdata 249016maxresident)k
+0inputs+26816outputs (6major+154840minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -f ../data/5-genomes-faa/ -pca -prod -fgs -s 1 -o 2023-11-29/faa-5genomes-1
+2023-11-29 14:58:53,409	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+Time to load 5 files: 0.0 seconds
+
+Processing Proteins (protein)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.98 seconds
+
+Creating protein Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 2.07 seconds
+Time to compute 2D PCA: 0.13 seconds
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+26.42user 3.37system 0:32.08elapsed 92%CPU (0avgtext+0avgdata 238044maxresident)k
+0inputs+16048outputs (4major+127015minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -f ../data/5-genomes-faa_gz/ -pca -prod -fgs -s 1 -o 2023-11-29/faa-5genomes_gz-1
+2023-11-29 14:59:25,503	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+Time to load 5 files: 0.0 seconds
+
+Processing Proteins (protein)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 1.36 seconds
+
+Creating protein Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 2.12 seconds
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+27.36user 3.40system 0:33.02elapsed 93%CPU (0avgtext+0avgdata 241040maxresident)k
+0inputs+17040outputs (1major+130146minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -i ../data/5-genomes-fna/DJ.fna -prod -fgs -s 1 -o 2023-11-29/fna-DJ-1
+2023-11-29 14:59:58,409	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+DJ .fna
+Time to load 1 files: 5.16 seconds
+Checking for large nucleotide files
+Processing Nucleotides
+Running Mercat2 using 6 cores
+Time to count 5-mers: 1.06 seconds
+
+Creating Nucleotide Graphs
+
+Running Prodigal on 1 files
+
+Running FragGeneScanRS on 1 files
+
+Processing Proteins (prod)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.37 seconds
+
+Creating prod Graphs
+
+Processing Proteins (fgs)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.76 seconds
+
+Creating fgs Graphs
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+15.99user 2.56system 1:12.85elapsed 25%CPU (0avgtext+0avgdata 232840maxresident)k
+0inputs+8240outputs (0major+126887minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -i ../data/5-genomes-fna_gz/DJ.fna.gz -prod -fgs -s 1 -o 2023-11-29/fna-DJ_gz-1
+2023-11-29 15:01:11,308	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+DJ .fna.gz
+Time to load 1 files: 5.13 seconds
+Checking for large nucleotide files
+Processing Nucleotides
+Running Mercat2 using 6 cores
+Time to count 5-mers: 1.02 seconds
+
+Creating Nucleotide Graphs
+
+Running Prodigal on 1 files
+
+Running FragGeneScanRS on 1 files
+
+Processing Proteins (prod)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.36 seconds
+
+Creating prod Graphs
+
+Processing Proteins (fgs)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.76 seconds
+
+Creating fgs Graphs
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+15.69user 2.60system 1:13.40elapsed 24%CPU (0avgtext+0avgdata 232384maxresident)k
+0inputs+8232outputs (6major+126648minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -i ../data/5-genomes-faa/DJ_pro.faa -prod -fgs -s 1 -o 2023-11-29/faa-DJ_gz-1
+2023-11-29 15:02:24,634	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+DJ_pro .faa
+Time to load 1 files: 0.0 seconds
+
+Processing Proteins (protein)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.38 seconds
+
+Creating protein Graphs
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+8.94user 2.36system 0:12.27elapsed 92%CPU (0avgtext+0avgdata 230032maxresident)k
+0inputs+5096outputs (0major+118096minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -i ../data/5-genomes-faa_gz/DJ_pro.faa.gz -prod -fgs -s 1 -o 2023-11-29/DJ_gz-1
+2023-11-29 15:02:36,949	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+DJ_pro .faa.gz
+Time to load 1 files: 0.0 seconds
+
+Processing Proteins (protein)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.75 seconds
+
+Creating protein Graphs
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+9.30user 2.52system 0:12.98elapsed 91%CPU (0avgtext+0avgdata 230800maxresident)k
+0inputs+5416outputs (8major+118767minor)pagefaults 0swaps
++ for chunk in 1 10
++ command time mercat2.py -k 5 -f ../data/5-genomes-fna/ -pca -prod -fgs -s 10 -o 2023-11-29/fna-5genomes-10
+2023-11-29 15:02:49,927	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+Time to load 5 files: 8.13 seconds
+Checking for large nucleotide files
+Processing Nucleotides
+Running Mercat2 using 6 cores
+Time to count 5-mers: 1.9 seconds
+
+Creating Nucleotide Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 2.07 seconds
+
+Running Prodigal on 5 files
+
+Running FragGeneScanRS on 5 files
+
+Processing Proteins (prod)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 1.55 seconds
+
+Creating prod Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 1.68 seconds
+Time to compute 2D PCA: 0.13 seconds
+
+Processing Proteins (fgs)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 2.57 seconds
+
+Creating fgs Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 1.4 seconds
+Time to compute 2D PCA: 0.11 seconds
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+56.73user 6.96system 2:38.93elapsed 40%CPU (0avgtext+0avgdata 251552maxresident)k
+0inputs+30040outputs (1major+167298minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -f ../data/5-genomes-fna_gz/ -pca -prod -fgs -s 10 -o 2023-11-29/fna-5genomes_gz-10
+2023-11-29 15:05:28,897	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+Time to load 5 files: 7.02 seconds
+Checking for large nucleotide files
+Processing Nucleotides
+Running Mercat2 using 6 cores
+Time to count 5-mers: 1.97 seconds
+
+Creating Nucleotide Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 2.08 seconds
+
+Running Prodigal on 5 files
+
+Running FragGeneScanRS on 5 files
+
+Processing Proteins (prod)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 1.68 seconds
+
+Creating prod Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 1.61 seconds
+Time to compute 2D PCA: 0.14 seconds
+
+Processing Proteins (fgs)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 2.66 seconds
+
+Creating fgs Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 1.36 seconds
+Time to compute 2D PCA: 0.12 seconds
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+57.61user 6.74system 2:41.31elapsed 39%CPU (0avgtext+0avgdata 250320maxresident)k
+0inputs+29984outputs (2major+163217minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -f ../data/5-genomes-faa/ -pca -prod -fgs -s 10 -o 2023-11-29/faa-5genomes-10
+2023-11-29 15:08:10,155	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+Time to load 5 files: 0.0 seconds
+
+Processing Proteins (protein)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 1.45 seconds
+
+Creating protein Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 2.15 seconds
+Time to compute 2D PCA: 0.14 seconds
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+27.99user 3.65system 0:33.74elapsed 93%CPU (0avgtext+0avgdata 242136maxresident)k
+0inputs+18136outputs (8major+132349minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -f ../data/5-genomes-faa_gz/ -pca -prod -fgs -s 10 -o 2023-11-29/faa-5genomes_gz-10
+2023-11-29 15:08:43,940	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+Time to load 5 files: 0.0 seconds
+
+Processing Proteins (protein)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 1.63 seconds
+
+Creating protein Graphs
+
+Running PCA
+Using Incremental PCA: False
+Time to compute 3D PCA: 2.09 seconds
+Time to compute 2D PCA: 0.16 seconds
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+32.77user 3.74system 0:39.06elapsed 93%CPU (0avgtext+0avgdata 242460maxresident)k
+0inputs+18128outputs (0major+132534minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -i ../data/5-genomes-fna/DJ.fna -prod -fgs -s 10 -o 2023-11-29/fna-DJ-10
+2023-11-29 15:09:23,047	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+DJ .fna
+Time to load 1 files: 5.89 seconds
+Checking for large nucleotide files
+Processing Nucleotides
+Running Mercat2 using 6 cores
+Time to count 5-mers: 1.24 seconds
+
+Creating Nucleotide Graphs
+
+Running Prodigal on 1 files
+
+Running FragGeneScanRS on 1 files
+
+Processing Proteins (prod)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.71 seconds
+
+Creating prod Graphs
+
+Processing Proteins (fgs)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.75 seconds
+
+Creating fgs Graphs
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+16.39user 2.52system 1:16.75elapsed 24%CPU (0avgtext+0avgdata 232928maxresident)k
+0inputs+8568outputs (16major+125743minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -i ../data/5-genomes-fna_gz/DJ.fna.gz -prod -fgs -s 10 -o 2023-11-29/fna-DJ_gz-10
+2023-11-29 15:10:39,717	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+DJ .fna.gz
+Time to load 1 files: 5.12 seconds
+Checking for large nucleotide files
+Processing Nucleotides
+Running Mercat2 using 6 cores
+Time to count 5-mers: 1.09 seconds
+
+Creating Nucleotide Graphs
+
+Running Prodigal on 1 files
+
+Running FragGeneScanRS on 1 files
+
+Processing Proteins (prod)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.7 seconds
+
+Creating prod Graphs
+
+Processing Proteins (fgs)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.76 seconds
+
+Creating fgs Graphs
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+15.69user 2.55system 1:13.47elapsed 24%CPU (0avgtext+0avgdata 233352maxresident)k
+0inputs+8560outputs (0major+125721minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -i ../data/5-genomes-faa/DJ_pro.faa -prod -fgs -s 10 -o 2023-11-29/faa-DJ_gz-10
+2023-11-29 15:11:53,285	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+DJ_pro .faa
+Time to load 1 files: 0.0 seconds
+
+Processing Proteins (protein)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.74 seconds
+
+Creating protein Graphs
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+10.90user 2.43system 0:14.52elapsed 91%CPU (0avgtext+0avgdata 231472maxresident)k
+0inputs+5424outputs (1major+119182minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -i ../data/5-genomes-faa_gz/DJ_pro.faa.gz -prod -fgs -s 10 -o 2023-11-29/DJ_gz-10
+2023-11-29 15:12:07,751	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+DJ_pro .faa.gz
+Time to load 1 files: 0.0 seconds
+
+Processing Proteins (protein)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.73 seconds
+
+Creating protein Graphs
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+9.14user 2.13system 0:12.65elapsed 89%CPU (0avgtext+0avgdata 230640maxresident)k
+0inputs+5432outputs (5major+118442minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -i ../data/Test_R1.fastq -prod -fgs -o 2023-11-29/test-qc
+2023-11-29 15:12:20,368	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+Test_R1 .fastq
+Time to load 1 files: 0.05 seconds
+Checking for large nucleotide files
+Processing Nucleotides
+Running Mercat2 using 6 cores
+Time to count 5-mers: 0.03 seconds
+
+Creating Nucleotide Graphs
+
+Running Prodigal on 1 files
+
+Running FragGeneScanRS on 1 files
+
+Processing Proteins (prod)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.01 seconds
+
+Processing Proteins (fgs)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.01 seconds
+Waiting for any remaining QC jobs
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+4.06user 2.32system 0:07.92elapsed 80%CPU (0avgtext+0avgdata 226988maxresident)k
+0inputs+2888outputs (6major+117919minor)pagefaults 0swaps
++ command time mercat2.py -k 5 -i ../data/Test_R1.fastq.gz -prod -fgs -o 2023-11-29/test-qc_gz
+2023-11-29 15:12:28,394	INFO worker.py:1642 -- Started a local Ray instance.
+
+Starting MerCat2 with k-mer 5 and 6 threads
+
+Loading files
+Test_R1 .fastq.gz
+Time to load 1 files: 0.05 seconds
+Checking for large nucleotide files
+Processing Nucleotides
+Running Mercat2 using 6 cores
+Time to count 5-mers: 0.03 seconds
+
+Creating Nucleotide Graphs
+
+Running Prodigal on 1 files
+
+Running FragGeneScanRS on 1 files
+
+Processing Proteins (prod)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.01 seconds
+
+Processing Proteins (fgs)
+Running Mercat2 using 6 cores
+Checking for large protein files
+Time to count 5-mers: 0.01 seconds
+Waiting for any remaining QC jobs
+Gathering Diversity Metrics
+
+Finished MerCat2 Pipeline
+3.77user 2.06system 0:07.91elapsed 73%CPU (0avgtext+0avgdata 227272maxresident)k
+0inputs+2888outputs (0major+117431minor)pagefaults 0swaps
+445.21user 64.04system 18:51.62elapsed 45%CPU (0avgtext+0avgdata 251552maxresident)k
+0inputs+243824outputs (64major+2384722minor)pagefaults 0swaps

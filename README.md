@@ -85,7 +85,7 @@ conda install -c bioconda fastqc fastp prodigal
 
 Mercat assumes the input file format based on the extension provided
 
-- raw fastq file: ['.fastq']
+- raw fastq file: ['.fastq', '.fq']
 - nucleotide fasta: ['.fa', '.fna', '.ffn', '.fasta']
 - amino acid fasta: ['.faa']
 
@@ -137,6 +137,7 @@ mercat2.py -i /path/to/input-file -k 3 -n 8 -c 10 -fgs
     - if nucleotide files are given a .tsv file is created for each sample containing k-mer count and GC content
   - if .fastq raw reads files are used, a 'clean' folder is created with the clean fasta file.
   - if the -prod option is used, a 'prodigal' folder is created with the amino acid .faa and .gff files
+  - if the -fgs option is used, a 'fgs' folder is created with the amino acid .faa file
 
 ![GitHub Logo](https://github.com/raw-lab/mercat2/raw/master/doc/PCA.png)
 

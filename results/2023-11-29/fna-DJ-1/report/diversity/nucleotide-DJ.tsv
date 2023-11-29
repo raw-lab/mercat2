@@ -1,0 +1,10 @@
+Metric	DJ
+shannon	9.46
+simpson	1.0
+simpson_e	0.51
+goods_coverage	1.0
+fisher_alpha	93.45
+dominance	0.0
+chao1	1024.0
+chao1_ci	[1024, 1024.0]
+ace	1024
