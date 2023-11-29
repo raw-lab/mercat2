@@ -66,7 +66,7 @@ def removeN(fasta:str, outpath:str, toupper:bool):
 
     basename = Path(fasta).stem.split('.')[0]
     ext = ''.join(Path(fasta).suffixes)
-    outFasta = Path(outpath, f"{basename}_clean{ext}")
+    outFasta = Path(outpath, f"{basename}_clean.fna.gz")
 
     NStats = dict()
     gc_count = 0
@@ -220,7 +220,6 @@ def orf_call(basename:str, fna_in:str, outpath:str):
     faa_tmp = os.path.join(outpath, basename+"_pro.faa")
     faa_out = faa_tmp # os.path.join(outpath, basename+"_pro.faa.gz")
     prod_cmd = ['prodigal',
-                '-i', fna_in,
                 '-a', faa_out,
                 '-p', 'meta']
     os.makedirs(outpath, exist_ok=True)
@@ -228,7 +227,7 @@ def orf_call(basename:str, fna_in:str, outpath:str):
     with open(f'{outpath}/{basename}.gbk', 'w') as stdout, open(f'{outpath}/{basename}.stderr', 'w') as stderr:
         subprocess.run(prod_cmd, stdout=stdout, stderr=stderr, stdin=pcat.stdout)
 
-    return faa_out
+    return (basename, faa_out)
 
 
 ## ORF Call FragGeneScanRS
@@ -274,4 +273,4 @@ def orf_call_fgs(basename:str, fna_in:str, outpath:str):
         for line in pout.stdout:
             writer.write(line)
 
-    return (basename, f"{faa_out}")
+    return (basename, faa_out)

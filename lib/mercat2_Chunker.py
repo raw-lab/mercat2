@@ -1,9 +1,12 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """mercat2_Chunker.py: Class for splitting fasta and fastq files into smaller chunks
 Takes sequence delimiters into account (i.e. '>', '@')
 """
 
 import os
+import gzip
+from pathlib import Path
 import argparse
 import glob
 
@@ -18,14 +21,11 @@ class Chunker:
         self.lines = lines
 
         self.fn = os.path.basename(self.path)
-        self.name, self.ext = os.path.splitext(self.fn)
+        #self.name, self.ext = os.path.splitext(self.fn)
+        self.name = Path(path).stem.split('.')[0]
+        self.ext = ''.join(Path(path).suffixes[:-1])
 
-        if os.path.exists(dest):
-            if os.listdir(dest):
-                raise IOError("Destination folder not empty.")
-
-        else:
-            os.mkdir(dest)
+        os.makedirs(dest, exist_ok=True)
 
         self.stream()
         self.files = glob.glob(os.path.join(dest, '*'))
@@ -39,22 +39,24 @@ class Chunker:
     def stream_delim(self):
         i = 0
         fout = open(os.path.join(self.dest, '%s.%05d%s' % (self.name, i, self.ext)), 'w')
-        with open(self.path, 'r') as inf:
-            for l in inf:
-                if self.delim in l:
-                    # check filesize, potentially increase i
-                    fout.flush()
-                    size = os.fstat(fout.fileno()).st_size
-                    if size >= self.chunksize:
-                        fout.close()
-                        i += 1
-                        fout = open(os.path.join(self.dest, '%s.%05d%s' % (self.name, i, self.ext)), 'w')
-                        fout.write(l)
-                    else:
-                        fout.write(l)
+        inf = gzip.open(self.path, 'rt') if self.path.endswith('.gz') else open(self.path, 'r')
+        #with open(self.path, 'r') as inf:
+        for l in inf:
+            if self.delim in l:
+                # check filesize, potentially increase i
+                fout.flush()
+                size = os.fstat(fout.fileno()).st_size
+                if size >= self.chunksize:
+                    fout.close()
+                    i += 1
+                    fout = open(os.path.join(self.dest, '%s.%05d%s' % (self.name, i, self.ext)), 'w')
+                    fout.write(l)
                 else:
                     fout.write(l)
-            fout.close()
+            else:
+                fout.write(l)
+        inf.close()
+        fout.close()
 
     def stream_lines(self):
         i = 0

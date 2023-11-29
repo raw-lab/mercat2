@@ -26,7 +26,6 @@ FILE_EXT_FASTQ = [".fq", ".fastq", ".fq.gz", ".fastq.gz"]
 FILE_EXT_NUCLEOTIDE = [".fasta", ".fa", ".fna", ".ffn", ".fasta.gz", ".fa.gz", ".fna.gz", ".ffn.gz"]
 FILE_EXT_PROTEIN = [".faa", ".faa.gz"]
 
-
 # RAM Usage
 def mem_use():
     return round(psutil.virtual_memory().used/1024.0**3, 2)
@@ -51,10 +50,14 @@ def parseargs():
     parser.add_argument('-skipclean', action='store_true', help='skip trimming of fastq files')
     parser.add_argument('-toupper', action='store_true', help='convert all input sequences to uppercase')
     parser.add_argument('-category_file', type=str, default=None, help=argparse.SUPPRESS)
+    parser.add_argument('-debug', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-pca', action='store_true', help='create interactive PCA plot of the samples (minimum of 4 fasta files required)')
 
     # Process arguments
     args = parser.parse_args()
+
+    global DEBUG
+    DEBUG = args.debug
 
     # Check folder/input file options
     if args.i and args.f:
@@ -72,13 +75,14 @@ def parseargs():
     if args.prod:
         if not mercat2_fasta.check_command('prodigal'):
             exit(1)
+
     return args
 
 
 ## Chunk Files
 #
 @ray.remote(num_cpus=1)
-def chunk_files(name:str, file:str, chunk_size:int, outpath:str):
+def chunk_files(name:str, filename:str, chunk_size:int, outpath:str):
     '''Checks if the given file is larger than chunk_size and splits the file as necessary.
     Fasta files are split at sequence headers to keep individual sequences contiguous.
 
@@ -92,12 +96,11 @@ def chunk_files(name:str, file:str, chunk_size:int, outpath:str):
         tuple: A tuple with the name, and list of paths to the chunked files.
     '''
 
-    if os.stat(file).st_size >= (chunk_size*1024*1024):
-        print(f"Large input file provided: {file}\nSplitting it into smaller files...\n")
+    if os.stat(filename).st_size >= (chunk_size*1024*1024):
         os.makedirs(outpath, exist_ok=True)
-        all_chunks = mercat2_Chunker.Chunker(file, outpath, str(chunk_size)+"M", ">").files
+        all_chunks = mercat2_Chunker.Chunker(filename, outpath, str(chunk_size)+"M", ">").files
     else:
-        all_chunks = [file]
+        all_chunks = [filename]
     return (name, all_chunks)
 
 @ray.remote(num_cpus=1)
@@ -143,12 +146,14 @@ def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=N
     combined_tsv = os.path.join(out_path, f'combined_{type_string}.tsv')
     if not os.path.exists(combined_tsv):
         mercat2_report.merge_tsv(tsv_list, combined_tsv)
-        print(f"\nTime to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+        if DEBUG:
+            print(f"\nTime to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Virtual Memory {mem_use()}GB")
     
     figPlots[f"Combined {type_string} kmer Summary"] = mercat2_figures.kmer_summary(combined_tsv)
-    print(f"Time to compute Combined {type_string} kmer Summary: {round(timeit.default_timer() - start_time,2)} seconds")
-    print(f"Virtual Memory {mem_use()}GB")
+    if DEBUG:
+        print(f"Time to compute Combined {type_string} kmer Summary: {round(timeit.default_timer() - start_time,2)} seconds")
+        print(f"Virtual Memory {mem_use()}GB")
 
     # PCA
     if pca and len(tsv_list) > 3:
@@ -158,12 +163,13 @@ def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=N
         combined_tsv = os.path.join(out_path, f'combined_{type_string}_T.tsv')
         if not os.path.exists(combined_tsv):
             mercat2_report.merge_tsv_T(tsv_list, combined_tsv)
-            print(f"\nTime to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
-            print(f"Virtual Memory {mem_use()}GB")
+            if DEBUG:
+                print(f"\nTime to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
+                print(f"Virtual Memory {mem_use()}GB")
 
         out_pca = os.path.join(out_path, f'pca_{type_string}')
         os.makedirs(out_pca, exist_ok=True)
-        pca3d,pca2d = mercat2_figures.plot_PCA(combined_tsv, out_pca, lowmem, class_file)
+        pca3d,pca2d = mercat2_figures.plot_PCA(combined_tsv, out_pca, lowmem, class_file, DEBUG)
         if pca3d:
             figPlots[f"{type_string} PCA 3D"] = pca3d
         if pca2d:
@@ -204,7 +210,8 @@ def mercat_main():
     print(f"\nStarting MerCat2 with k-mer {m_kmer} and {m_num_cores} threads\n")
 
     ray.init(num_cpus=m_num_cores, log_to_driver=False)
-    print(f"\nVirtual Memory {mem_use()}GB")
+    if DEBUG:
+        print(f"\nVirtual Memory {mem_use()}GB")
 
     # Load input files
     gc_content = dict()
@@ -284,7 +291,8 @@ def mercat_main():
         gc_content[basename] = stat['GC Content']
 
     print(f"Time to load {len(samples['nucleotide'])+len(samples['protein'])} files: {round(timeit.default_timer() - start_time,2)} seconds")
-    print(f"Virtual Memory {mem_use()}GB")
+    if DEBUG:
+        print(f"Virtual Memory {mem_use()}GB")
     start_time = timeit.default_timer()
 
     # Begin processing files
@@ -309,7 +317,8 @@ def mercat_main():
                 ready,jobs = ray.wait(jobs)
                 name,chunks = ray.get(ready[0])
                 samples['nucleotide'][name] += chunks
-            print(f"Time to check for large files: {round(timeit.default_timer() - start_time,2)} seconds")
+            if DEBUG:
+                print(f"Time to check for large files: {round(timeit.default_timer() - start_time,2)} seconds")
 
         print("Processing Nucleotides")
         print(f"Running Mercat2 using {m_num_cores} cores")
@@ -328,7 +337,8 @@ def mercat_main():
             if kmers:
                 tsv_list[basename] = kmers
         print(f"Time to count {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+        if DEBUG:
+            print(f"Virtual Memory {mem_use()}GB")
         # Stacked Bar Plots (top kmer counts)
         if len(tsv_list):
             figPlots.update(createFigures(tsv_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file, m_pca))
@@ -344,36 +354,24 @@ def mercat_main():
     # PROD ORF Call
     if m_flag_prodigal and samples['nucleotide']:
         @ray.remote(num_cpus=1)
-        def orf_call_prod(basename, index, file, prodpath):
-            return basename, mercat2_fasta.orf_call(f"{basename}_{index}", file, prodpath)
+        def orf_call_prod(basename, file, prodpath):
+            return mercat2_fasta.orf_call(basename, file, prodpath)
 
         print(f"\nRunning Prodigal on {len(samples['nucleotide'])} files")
         start_time = timeit.default_timer()
         prodpath = os.path.join(m_outputfolder, 'prodigal')
         os.makedirs(prodpath, exist_ok=True)
-        jobsChunk = []
-        for basename,files in samples['nucleotide'].items():
-            tmp_chunk = os.path.join(prodpath, f'chunk_{basename}')
-            jobsChunk += [chunk_files.remote(basename, files[0], 1, tmp_chunk)]
         jobsProd = []
-        while jobsChunk:
-            ready,jobsChunk = ray.wait(jobsChunk)
-            name,chunks = ray.get(ready[0])
-            for i,chunk in enumerate(chunks):
-                jobsProd += [orf_call_prod.remote(name, i, chunk, prodpath)]
+        for basename,files in samples['nucleotide'].items():
+            jobsProd += [orf_call_prod.remote(basename, files[0], prodpath)]
         while jobsProd:
             ready,jobsProd = ray.wait(jobsProd)
-            name,chunk = ray.get(ready[0])
-            if name not in samples['prod']:
-                samples['prod'][name] = [os.path.join(prodpath, f'{name}.faa')]
-                with open(samples['prod'][name][0], 'w') as writer:
-                    writer.write(open(chunk).read())
-            else:
-                with open(samples['prod'][name][0], 'a') as writer:
-                    writer.write(open(chunk).read())
-            os.remove(chunk)
-        print(f"Time to run Prodigal: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+            ret = ray.get(ready[0])
+            if ret:
+                samples['prod'][ret[0]] = [ret[1]]
+        if DEBUG:
+            print(f"Time to run Prodigal: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Virtual Memory {mem_use()}GB")
 
     # FGS ORF Call
     if m_flag_fgs and samples['nucleotide']:
@@ -383,16 +381,17 @@ def mercat_main():
         print(f"\nRunning FragGeneScanRS on {len(samples['nucleotide'])} files")
         start_time = timeit.default_timer()
         outfgs = os.path.join(m_outputfolder, 'fgs')
-        jobs = []
+        jobsFGS = []
         for basename,files in samples['nucleotide'].items():
-            jobs += [orf_call_fgs.remote(basename, files[0], outfgs)]
-        while jobs:
-            ready,jobs = ray.wait(jobs)
+            jobsFGS += [orf_call_fgs.remote(basename, files[0], outfgs)]
+        while jobsFGS:
+            ready,jobsFGS = ray.wait(jobsFGS)
             ret = ray.get(ready[0])
             if ret:
                 samples['fgs'][ret[0]] = [ret[1]]
-        print(f"Time to run FGS: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+        if DEBUG:
+            print(f"Time to run FGS: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Virtual Memory {mem_use()}GB")
 
 
     ## Process Proteins ##
@@ -414,7 +413,8 @@ def mercat_main():
                 ready,jobs = ray.wait(jobs)
                 name,chunks = ray.get(ready[0])
                 samples[sample_type][name] += chunks
-        print(f"Time to check for large protein files: {round(timeit.default_timer() - start_time,2)} seconds")
+        if DEBUG:
+            print(f"Time to check for large protein files: {round(timeit.default_timer() - start_time,2)} seconds")
 
         jobs = []
         tsv_list = dict()
@@ -432,7 +432,8 @@ def mercat_main():
                 if kmers:
                     tsv_list[basename] = kmers
         print(f"Time to count {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
-        print(f"Virtual Memory {mem_use()}GB")
+        if DEBUG:
+            print(f"Virtual Memory {mem_use()}GB")
         if len(tsv_list):
             figPlots.update(createFigures(tsv_list, sample_type, m_outputfolder, m_lowmem, m_class_file, m_pca))
         for basename,filename in tsv_list.items():
