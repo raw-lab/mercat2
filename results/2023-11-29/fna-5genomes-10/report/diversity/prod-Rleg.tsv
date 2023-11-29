@@ -1,0 +1,10 @@
+Metric	Rleg
+shannon	13.85
+simpson	1.0
+simpson_e	0.81
+goods_coverage	1.0
+fisher_alpha	3913.49
+dominance	0.0
+chao1	16032.0
+chao1_ci	[16032, 16032.19]
+ace	16032.0

@@ -1,0 +1,10 @@
+Metric	Test_R1
+shannon	8.73
+simpson	1.0
+simpson_e	0.46
+goods_coverage	1.0
+fisher_alpha	110.38
+dominance	0.0
+chao1	642.0
+chao1_ci	[642, 642.0]
+ace	642.0
