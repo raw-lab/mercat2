@@ -1,4 +1,4 @@
-# MerCat2: python code for versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for omic analysis
+# MerCat2: python code for versatile k-mer counter for database independent property analysis (DIPA) for omic analysis
 
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/mercat2/README.html)
 
@@ -140,6 +140,10 @@ mercat2.py -i /path/to/input-file -k 3 -n 8 -c 10 -fgs
   - if the -fgs option is used, a 'fgs' folder is created with the amino acid .faa file
 
 ![GitHub Logo](https://github.com/raw-lab/mercat2/raw/master/doc/PCA.png)
+
+## Diversity estimation 
+
+Alpha diversity metrics provided by MerCat2 are experimental. We are currently working on the robustness of these measures. 
 
 ## Notes on memory usage and speed
 
