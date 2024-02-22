@@ -63,22 +63,22 @@ def kmer_summary(tsv_file: dict):
                 if line_avg(line) > line_avg(top_kmers[0]):
                     top_kmers[0] = line
 
-    df = pd.DataFrame(top_kmers, columns=header).set_index('kmer', drop=True).astype(int)
+    df = pd.DataFrame(top_kmers, columns=header).set_index('k-mer', drop=True).astype(int)
     df = df.T.reset_index().rename(columns=dict(index='sample'))
-    df = df.melt(id_vars=['sample'], var_name='kmer', value_name='count')#.sort_values(by='count', ascending=False)
-    df['label'] = pd.Categorical(df['kmer']).codes + 1
-    df['label'] = df['label'].apply(lambda x: f'kmer-{x}')
+    df = df.melt(id_vars=['sample'], var_name='k-mer', value_name='count')#.sort_values(by='count', ascending=False)
+    df['label'] = pd.Categorical(df['k-mer']).codes + 1
+    df['label'] = df['label'].apply(lambda x: f'k-mer-{x}')
     df.sort_values(by=['label','count'], inplace=True, ascending=[True,False])
 
     fig = px.bar(df, x='sample', y='count', text='count', color='sample', facet_row='label', template="plotly_white")
     fig.for_each_annotation(lambda a: a.update(text=a.text.replace('label=', '')))
     fig.update_layout(font=dict(color="Black"))
     
-    df = df[['kmer', 'label']].drop_duplicates()
+    df = df[['k-mer', 'label']].drop_duplicates()
 
     # Add table to label kmers
     figTable = go.Figure(
-        data=[go.Table(cells=dict(values=[df['label'].tolist(), df['kmer'].tolist()]))],
+        data=[go.Table(cells=dict(values=[df['label'].tolist(), df['k-mer'].tolist()]))],
         layout=go.Layout(margin=go.layout.Margin(l=0, r=0, b=0, t=0,
         ))
     )

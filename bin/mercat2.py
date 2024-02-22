@@ -3,11 +3,12 @@
 
 """mercat2.py: Python code for Parallel k-mer counting."""
 
-__version__     = "1.3"
+__version__     = "1.4"
 __author__      = "Jose L. Figueroa, Richard A. White III"
 __copyright__   = "Copyright 2022"
 
 import os
+import re
 from pathlib import Path
 import subprocess
 import shutil
@@ -52,6 +53,9 @@ def parseargs():
     parser.add_argument('-category_file', type=str, default=None, help=argparse.SUPPRESS)
     parser.add_argument('-debug', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('-pca', action='store_true', help='create interactive PCA plot of the samples (minimum of 4 fasta files required)')
+    parser.add_argument('--version', '-v', action='version',
+                        version=f'MerCat2: \n version: {__version__}',
+                        help='show the version number and exit')
 
     # Process arguments
     args = parser.parse_args()
@@ -105,7 +109,7 @@ def chunk_files(name:str, filename:str, chunk_size:int, outpath:str):
 
 @ray.remote(num_cpus=1)
 def diversity(key, infile, outfile, sample_type):
-    mercat2_diversity.compute_alpha_beta_diversity(key, infile, outfile)
+    mercat2_diversity.compute_alpha_diversity(key, infile, outfile)
     return (sample_type, outfile)
 @ray.remote(num_cpus=1)
 def countKmers(file, kmer, min_count):
@@ -149,7 +153,15 @@ def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=N
         if DEBUG:
             print(f"\nTime to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
             print(f"Virtual Memory {mem_use()}GB")
-    
+
+    combined_T_tsv = os.path.join(out_path, f'combined_{type_string}_T.tsv')
+    if not os.path.exists(combined_T_tsv):
+        mercat2_report.merge_tsv_T(tsv_list, combined_T_tsv)
+        if DEBUG:
+            print(f"\nTime to merge TSV transposed files: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Virtual Memory {mem_use()}GB")
+
+
     figPlots[f"Combined {type_string} kmer Summary"] = mercat2_figures.kmer_summary(combined_tsv)
     if DEBUG:
         print(f"Time to compute Combined {type_string} kmer Summary: {round(timeit.default_timer() - start_time,2)} seconds")
@@ -160,16 +172,9 @@ def createFigures(tsv_list:dict, type_string:str, out_path:os.PathLike, lowmem=N
         print("\nRunning PCA")
         start_time = timeit.default_timer()
 
-        combined_tsv = os.path.join(out_path, f'combined_{type_string}_T.tsv')
-        if not os.path.exists(combined_tsv):
-            mercat2_report.merge_tsv_T(tsv_list, combined_tsv)
-            if DEBUG:
-                print(f"\nTime to merge TSV files: {round(timeit.default_timer() - start_time,2)} seconds")
-                print(f"Virtual Memory {mem_use()}GB")
-
         out_pca = os.path.join(out_path, f'pca_{type_string}')
         os.makedirs(out_pca, exist_ok=True)
-        pca3d,pca2d = mercat2_figures.plot_PCA(combined_tsv, out_pca, lowmem, class_file, DEBUG)
+        pca3d,pca2d = mercat2_figures.plot_PCA(combined_T_tsv, out_pca, lowmem, class_file, DEBUG)
         if pca3d:
             figPlots[f"{type_string} PCA 3D"] = pca3d
         if pca2d:
@@ -340,8 +345,11 @@ def mercat_main():
         if DEBUG:
             print(f"Virtual Memory {mem_use()}GB")
         # Stacked Bar Plots (top kmer counts)
+        sample_type = "Nucleotide"
         if len(tsv_list):
             figPlots.update(createFigures(tsv_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file, m_pca))
+            tsvfile = Path(m_outputfolder, f'combined_{sample_type}_T.tsv')
+            mercat2_diversity.compute_beta_diversity(sample_type, tsvfile, Path(m_outputfolder, "report", "diversity"))
         for basename,filename in tsv_list.items():
             os.makedirs(os.path.join(report_dir, 'diversity'), exist_ok=True)
             outfile = os.path.join(report_dir, 'diversity', f'nucleotide-{basename}.tsv')
@@ -436,6 +444,8 @@ def mercat_main():
             print(f"Virtual Memory {mem_use()}GB")
         if len(tsv_list):
             figPlots.update(createFigures(tsv_list, sample_type, m_outputfolder, m_lowmem, m_class_file, m_pca))
+            tsvfile = Path(m_outputfolder, f'combined_{sample_type}_T.tsv')
+            mercat2_diversity.compute_beta_diversity(sample_type, tsvfile, Path(m_outputfolder, "report", "diversity"))
         for basename,filename in tsv_list.items():
             os.makedirs(os.path.join(report_dir, 'diversity'), exist_ok=True)
             outfile = os.path.join(report_dir, 'diversity', f'{sample_type}-{basename}.tsv')
@@ -461,24 +471,20 @@ def mercat_main():
     mergedDiversity = dict()
     while jobsDiversity:
         ready,jobsDiversity = ray.wait(jobsDiversity)
-        if ready:
-            key,outfile = ray.get(ready[0])
-            if key not in mergedDiversity:
-                mergedDiversity[key] = []
-            mergedDiversity[key].append(outfile)
+        key,outfile = ray.get(ready[0])
+        if key not in mergedDiversity:
+            mergedDiversity[key] = []
+        mergedDiversity[key].append(outfile)
 
-    import pandas as pd
-    for key,val in mergedDiversity.items():
-        first = True
-        for filename in val:
-            if first:
-                first = False
-                df = pd.read_csv(filename, sep='\t')
-            else:
-                df2 = pd.read_csv(filename, sep='\t')
-                df = pd.merge(df, df2, on="Metric")
+    for key,filelist in mergedDiversity.items():
+        tomerge = dict()
+        for filename in filelist:
+            name = re.search(r'\w+-(\w+).tsv', Path(filename).name)
+            if name:
+                name = name.group(1)
+                tomerge[name] = filename
         outfile = Path(report_dir, f'diversity-{key}.tsv')
-        df.to_csv(outfile, sep='\t', index=False)
+        mercat2_report.merge_tsv(tomerge, outfile)
 
     print("\nFinished MerCat2 Pipeline")
 
