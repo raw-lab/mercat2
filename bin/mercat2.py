@@ -38,8 +38,8 @@ def parseargs():
     '''Returns the parsed command line options.'''
     num_cores = psutil.cpu_count(logical=False)
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('-i', type=str, required=False, help='path-to-input-file')
-    parser.add_argument('-f', type=str, required=False, help='path-to-folder-containing-input-files')
+    parser.add_argument('-i', required=False, help='path to input file', nargs='+')
+    parser.add_argument('-f', type=str, required=False, help='path to folder containing input files')
     parser.add_argument('-k', type=int, required = True, help='kmer length')
     parser.add_argument('-n', type=int, default=num_cores, help='no of cores [auto detect]')
     parser.add_argument('-c', type=int, default=10, help='minimum kmer count [10]')
@@ -64,16 +64,13 @@ def parseargs():
     DEBUG = args.debug
 
     # Check folder/input file options
-    if args.i and args.f:
-        parser.error("Can only specify either an input file (-i) or path to folder containing input files (-f) at a time")
-    if args.i:
-        if not os.path.isfile(args.i):
-            parser.error(f"file {args.i} is not valid.\n")
-    elif args.f:
-        if not os.path.isdir(args.f):
-            parser.error(f"folder {args.f} is not valid.\n")
-    else:
+    if not args.i and not args.f:
         parser.error("Please provide either an input file (-i) or an input folder (-f)")
+    for filename in args.i:
+        if not os.path.isfile(filename):
+            parser.error(f"file '{filename}' is not valid.\n")
+    if args.f and not os.path.isdir(args.f):
+        parser.error(f"folder {args.f} is not valid.\n")
 
     # check prodigal/protein flags
     if args.prod:
@@ -212,7 +209,7 @@ def mercat_main():
         m_outputfolder = 'mercat_results'
     os.makedirs(m_outputfolder, exist_ok=True)
 
-    print(f"\nStarting MerCat2 with k-mer {m_kmer} and {m_num_cores} threads\n")
+    print(f"\nStarting MerCat2 v{__version__} with k-mer {m_kmer} and {m_num_cores} threads\n")
 
     ray.init(num_cpus=m_num_cores, log_to_driver=False)
     if DEBUG:
@@ -267,22 +264,23 @@ def mercat_main():
                         subprocess.run(command, stdout=writer, stderr=subprocess.DEVNULL)
                 elif f_ext in FILE_EXT_PROTEIN:
                     samples['protein'][basename] = [file]
-    else:
-        basepath = os.path.abspath(os.path.expanduser(m_inputfile))
-        basename = Path(basepath).stem.split('.')[0]
-        f_ext = ''.join(Path(basepath).suffixes)
-        print(basename, f_ext)
-        if f_ext in FILE_EXT_FASTQ:
-            jobsFastq += [fastq_to_fasta.remote(m_inputfile, cleanpath, basename, m_skipclean)]
-        elif f_ext in FILE_EXT_NUCLEOTIDE:
-            jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename, m_toupper, m_skipclean)]
-            command = [ 'countAssembly.py', '-f', m_inputfile, '-i', '100' ]
-            statfile = os.path.join(m_outputfolder, 'stats', f'{basename}.txt')
-            os.makedirs(os.path.join(m_outputfolder, 'stats'), exist_ok=True)
-            with open(statfile, 'w') as writer:
-                subprocess.run(command, stdout=writer, stderr=subprocess.DEVNULL)
-        elif f_ext in FILE_EXT_PROTEIN:
-            samples['protein'][basename] = [m_inputfile]
+    if m_inputfile:
+        for filename in m_inputfile:
+            basepath = os.path.abspath(os.path.expanduser(filename))
+            basename = Path(basepath).stem.split('.')[0]
+            f_ext = ''.join(Path(basepath).suffixes)
+            print(basename, f_ext)
+            if f_ext in FILE_EXT_FASTQ:
+                jobsFastq += [fastq_to_fasta.remote(filename, cleanpath, basename, m_skipclean)]
+            elif f_ext in FILE_EXT_NUCLEOTIDE:
+                jobsContig += [clean_contig.remote(filename, cleanpath, basename, m_toupper, m_skipclean)]
+                command = [ 'countAssembly.py', '-f', filename, '-i', '100' ]
+                statfile = os.path.join(m_outputfolder, 'stats', f'{basename}.txt')
+                os.makedirs(os.path.join(m_outputfolder, 'stats'), exist_ok=True)
+                with open(statfile, 'w') as writer:
+                    subprocess.run(command, stdout=writer, stderr=subprocess.DEVNULL)
+            elif f_ext in FILE_EXT_PROTEIN:
+                samples['protein'][basename] = [filename]
 
     # Wait for jobs
     while jobsFastq:
