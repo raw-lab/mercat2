@@ -236,8 +236,11 @@ def mercat_main():
     def fastq_qc(file, cleanpath, basename):
         return (basename, mercat2_fasta.qc(file, cleanpath, basename))
     @ray.remote(num_cpus=1)
-    def clean_contig(file, cleanpath, basename, toupper):
-        file,stat = mercat2_fasta.removeN(file, cleanpath, toupper)
+    def clean_contig(file, cleanpath, basename, toupper, skipclean):
+        if skipclean:
+            stat = None
+        else:
+            file,stat = mercat2_fasta.removeN(file, cleanpath, toupper)
         return (basename, file, stat)
     @ray.remote(num_cpus=1)
     def fastq_to_fasta(file, cleanpath, basename, skiptrim:bool):
@@ -256,7 +259,7 @@ def mercat_main():
                 if f_ext in FILE_EXT_FASTQ:
                     jobsFastq += [fastq_to_fasta.remote(file, cleanpath, basename, m_skipclean)]
                 elif f_ext in FILE_EXT_NUCLEOTIDE:
-                    jobsContig += [clean_contig.remote(file, cleanpath, basename, m_toupper)]
+                    jobsContig += [clean_contig.remote(file, cleanpath, basename, m_toupper, m_skipclean)]
                     command = [ 'countAssembly.py', '-f', file, '-i', '100' ]
                     statfile = os.path.join(m_outputfolder, 'stats', f'{basename}.txt')
                     os.makedirs(os.path.join(m_outputfolder, 'stats'), exist_ok=True)
@@ -264,7 +267,6 @@ def mercat_main():
                         subprocess.run(command, stdout=writer, stderr=subprocess.DEVNULL)
                 elif f_ext in FILE_EXT_PROTEIN:
                     samples['protein'][basename] = [file]
-
     else:
         basepath = os.path.abspath(os.path.expanduser(m_inputfile))
         basename = Path(basepath).stem.split('.')[0]
@@ -273,7 +275,7 @@ def mercat_main():
         if f_ext in FILE_EXT_FASTQ:
             jobsFastq += [fastq_to_fasta.remote(m_inputfile, cleanpath, basename, m_skipclean)]
         elif f_ext in FILE_EXT_NUCLEOTIDE:
-            jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename, m_toupper)]
+            jobsContig += [clean_contig.remote(m_inputfile, cleanpath, basename, m_toupper, m_skipclean)]
             command = [ 'countAssembly.py', '-f', m_inputfile, '-i', '100' ]
             statfile = os.path.join(m_outputfolder, 'stats', f'{basename}.txt')
             os.makedirs(os.path.join(m_outputfolder, 'stats'), exist_ok=True)
@@ -293,7 +295,8 @@ def mercat_main():
         ready,jobsContig = ray.wait(jobsContig)
         basename,file,stat = ray.get(ready[0])
         samples['nucleotide'][basename] = [file]
-        gc_content[basename] = stat['GC Content']
+        if stat:
+            gc_content[basename] = stat['GC Content']
 
     print(f"Time to load {len(samples['nucleotide'])+len(samples['protein'])} files: {round(timeit.default_timer() - start_time,2)} seconds")
     if DEBUG:
@@ -445,7 +448,7 @@ def mercat_main():
         if len(tsv_list):
             figPlots.update(createFigures(tsv_list, sample_type, m_outputfolder, m_lowmem, m_class_file, m_pca))
             tsvfile = Path(m_outputfolder, f'combined_{sample_type}_T.tsv')
-            mercat2_diversity.compute_beta_diversity(sample_type, tsvfile, Path(m_outputfolder, "report", "diversity"))
+            mercat2_diversity.compute_beta_diversity(sample_type, tsvfile, Path(m_outputfolder, "report", "beta_diversity"))
         for basename,filename in tsv_list.items():
             os.makedirs(os.path.join(report_dir, 'diversity'), exist_ok=True)
             outfile = os.path.join(report_dir, 'diversity', f'{sample_type}-{basename}.tsv')

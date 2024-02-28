@@ -1,6 +1,9 @@
 import os
+import re
 import setuptools
 
+main_script = 'bin/mercat2.py'
+version = re.search(r'__version__\s+= "([0-9.]+)"', open(main_script).read()).group(1)
 
 # recursively load package files
 def package_files(directory):
@@ -14,14 +17,14 @@ def package_files(directory):
 
 setuptools.setup(
     name = "mercat2",
-    version = "1.3",
+    version = version,
     author = "Jose Luis Figueroa, Richard White III",
     author_email = "jlfiguer@charlotte.edu",
     description = "versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis",
     long_description = open("README.md", "r").read(),
     long_description_content_type = "text/markdown",
     url = "https://github.com/raw-lab/mercat2",
-    scripts = ['bin/mercat2.py'], # scripts to install to 'bin' path
+    scripts = [main_script], # scripts to install to 'bin' path
     packages = ['mercat2_lib'], # list of packages, installed to 'site-packages' folder
     package_dir = dict(mercat2_lib='lib'), # dict with 'package'='relative dir'
     package_data = dict(mercat2_lib=package_files('lib/')), # add non-python data to package, relative paths

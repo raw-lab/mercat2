@@ -54,7 +54,7 @@ def compute_alpha_diversity(basename, counts_tsv, out_file):
 
 
 def compute_beta_diversity(basename, counts_tsv:Path, outpath:Path):
-    outpath.mkdir(parents=True, exist_ok=True)
+    outpath.mkdir(0o777, True, True)
 
     IDs = list()
     counts = list()
