@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""mercat2.py: Python code for Parallel k-mer counting."""
+"""versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis"""
 
-__version__     = "1.4"
-__author__      = "Jose L. Figueroa, Richard A. White III"
-__copyright__   = "Copyright 2022"
+__version__     = "1.4.0"
+__author__      = "Jose L. Figueroa III, Richard A. White III"
+__copyright__   = "Copyright (c) 2022-2024"
 
 import os
 import re
@@ -38,7 +38,7 @@ def parseargs():
     '''Returns the parsed command line options.'''
     num_cores = psutil.cpu_count(logical=False)
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('-i', required=False, help='path to input file', nargs='+')
+    parser.add_argument('-i', required=False, default=list(), help='path to input file', nargs='+')
     parser.add_argument('-f', type=str, required=False, help='path to folder containing input files')
     parser.add_argument('-k', type=int, required = True, help='kmer length')
     parser.add_argument('-n', type=int, default=num_cores, help='no of cores [auto detect]')
@@ -47,6 +47,7 @@ def parseargs():
     parser.add_argument('-fgs', action='store_true', help='run FragGeneScanRS on fasta files')
     parser.add_argument('-s', type=int, default=100, required=False, help='Split into x MB files. [100]')
     parser.add_argument('-o', type=str, default='mercat_results', required=False, help="Output folder, default = 'mercat_results' in current directory")
+    parser.add_argument('-replace', action='store_true', help="Replace existing output directory [False]")
     parser.add_argument('-lowmem', type=strtobool, default=None, help="Flag to use incremental PCA when low memory is available. [auto]")
     parser.add_argument('-skipclean', action='store_true', help='skip trimming of fastq files')
     parser.add_argument('-toupper', action='store_true', help='convert all input sequences to uppercase')
@@ -77,7 +78,7 @@ def parseargs():
         if not mercat2_fasta.check_command('prodigal'):
             exit(1)
 
-    return args
+    return args, parser
 
 
 ## Chunk Files
@@ -110,7 +111,7 @@ def diversity(key, infile, outfile, sample_type):
     return (sample_type, outfile)
 @ray.remote(num_cpus=1)
 def countKmers(file, kmer, min_count):
-    return mercat2_kmers.find_kmers(file, kmer, min_count)
+    return mercat2_kmers.find_kmers(Path(file), kmer, min_count)
 @ray.remote(num_cpus=1)
 def run_mercat2(basename:str, files:list, out_file:os.PathLike, kmer, min_count, num_cores):
     kmers = dict()
@@ -186,32 +187,34 @@ def mercat_main():
     '''Main method'''
 
     # Process Arguments
-    __args__ = parseargs()
+    args, parser = parseargs()
     # Set Flags
-    m_kmer = __args__.k
-    m_num_cores = __args__.n
-    m_inputfile = __args__.i
-    m_inputfolder = __args__.f
-    m_min_count = __args__.c
-    m_flag_prodigal = __args__.prod
-    m_flag_fgs = __args__.fgs
-    m_chunk_size = __args__.s
-    m_outputfolder = __args__.o
-    m_lowmem = None if __args__.lowmem is None else bool(__args__.lowmem)
-    m_skipclean = __args__.skipclean
-    m_toupper = __args__.toupper
-    m_class_file = __args__.category_file
-    m_pca = __args__.pca
+    m_kmer = args.k
+    m_num_cores = args.n
+    m_inputfile = args.i
+    m_inputfolder = args.f
+    m_min_count = args.c
+    m_flag_prodigal = args.prod
+    m_flag_fgs = args.fgs
+    m_chunk_size = args.s
+    m_outputfolder = Path(args.o)
+    m_lowmem = None if args.lowmem is None else bool(args.lowmem)
+    m_skipclean = args.skipclean
+    m_toupper = args.toupper
+    m_class_file = args.category_file
+    m_pca = args.pca
     
-    if os.path.exists(m_outputfolder) and os.path.isdir(m_outputfolder):
-        shutil.rmtree(m_outputfolder)
-    if not m_outputfolder:
-        m_outputfolder = 'mercat_results'
-    os.makedirs(m_outputfolder, exist_ok=True)
+    if m_outputfolder.exists():
+        if args.replace:
+            shutil.rmtree(m_outputfolder)
+        else:
+            parser.error(f"Output folder exists, please specify another folder or use the flag '-replace' to override the files. '{m_outputfolder}'")
+    
+    m_outputfolder.mkdir(0o777, True, True)
 
     print(f"\nStarting MerCat2 v{__version__} with k-mer {m_kmer} and {m_num_cores} threads\n")
 
-    ray.init(num_cpus=m_num_cores, log_to_driver=False)
+    ray.init(num_cpus=m_num_cores, log_to_driver=DEBUG)
     if DEBUG:
         print(f"\nVirtual Memory {mem_use()}GB")
 
@@ -219,7 +222,7 @@ def mercat_main():
     gc_content = dict()
     samples = dict(nucleotide=dict(),
                 protein=dict(),
-                prod=dict(),
+                prodigal=dict(),
                 fgs=dict())
 
     cleanpath = os.path.join(m_outputfolder, 'clean')
@@ -246,29 +249,27 @@ def mercat_main():
             file = mercat2_fasta.trim(file, cleanpath, basename)
             jobsQC += [fastq_qc.remote(file, cleanpath, basename)]
         return (basename, mercat2_fasta.fq2fa(file, cleanpath, basename), jobsQC)
+    # Load files from folder
     if m_inputfolder:
         m_inputfolder = os.path.abspath(os.path.expanduser(m_inputfolder))
         for fname in os.listdir(m_inputfolder):
-            file = os.path.join(m_inputfolder, fname)
-            if not os.path.isdir(file):
-                basename = Path(fname).stem.split('.')[0]
-                f_ext = ''.join(Path(fname).suffixes)
-                if f_ext in FILE_EXT_FASTQ:
-                    jobsFastq += [fastq_to_fasta.remote(file, cleanpath, basename, m_skipclean)]
-                elif f_ext in FILE_EXT_NUCLEOTIDE:
-                    jobsContig += [clean_contig.remote(file, cleanpath, basename, m_toupper, m_skipclean)]
-                    command = [ 'countAssembly.py', '-f', file, '-i', '100' ]
-                    statfile = os.path.join(m_outputfolder, 'stats', f'{basename}.txt')
-                    os.makedirs(os.path.join(m_outputfolder, 'stats'), exist_ok=True)
-                    with open(statfile, 'w') as writer:
-                        subprocess.run(command, stdout=writer, stderr=subprocess.DEVNULL)
-                elif f_ext in FILE_EXT_PROTEIN:
-                    samples['protein'][basename] = [file]
+            file = Path(m_inputfolder, fname)
+            if file.is_file:
+                suffixes = file.suffixes
+                for i in reversed(range(len(suffixes))):
+                    if ''.join(suffixes[i:]) in FILE_EXT_FASTQ + FILE_EXT_NUCLEOTIDE + FILE_EXT_PROTEIN:
+                        m_inputfile.append(file)
+                        break
+    # Read input files
     if m_inputfile:
         for filename in m_inputfile:
-            basepath = os.path.abspath(os.path.expanduser(filename))
-            basename = Path(basepath).stem.split('.')[0]
-            f_ext = ''.join(Path(basepath).suffixes)
+            basepath = Path(filename).expanduser().absolute()
+            suffixes = basepath.suffixes
+            f_ext = ''
+            for i in reversed(range(len(suffixes))):
+                if ''.join(suffixes[i:]) in FILE_EXT_FASTQ + FILE_EXT_NUCLEOTIDE + FILE_EXT_PROTEIN:
+                    f_ext = ''.join(suffixes[i:])
+            basename = basepath.name.removesuffix(f_ext)
             print(basename, f_ext)
             if f_ext in FILE_EXT_FASTQ:
                 jobsFastq += [fastq_to_fasta.remote(filename, cleanpath, basename, m_skipclean)]
@@ -322,6 +323,7 @@ def mercat_main():
             while jobs:
                 ready,jobs = ray.wait(jobs)
                 name,chunks = ray.get(ready[0])
+                chunks = [Path(c) for c in chunks]
                 samples['nucleotide'][name] += chunks
             if DEBUG:
                 print(f"Time to check for large files: {round(timeit.default_timer() - start_time,2)} seconds")
@@ -346,11 +348,14 @@ def mercat_main():
         if DEBUG:
             print(f"Virtual Memory {mem_use()}GB")
         # Stacked Bar Plots (top kmer counts)
-        sample_type = "Nucleotide"
+        start_time = timeit.default_timer()
         if len(tsv_list):
             figPlots.update(createFigures(tsv_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file, m_pca))
             tsvfile = Path(m_outputfolder, f'combined_{sample_type}_T.tsv')
+            sample_type = "Nucleotide"
             mercat2_diversity.compute_beta_diversity(sample_type, tsvfile, Path(m_outputfolder, "report", "diversity"))
+            if DEBUG:
+                print(f"Time to calculate Beta Diversity: {round(timeit.default_timer() - start_time,2)} seconds")
         for basename,filename in tsv_list.items():
             os.makedirs(os.path.join(report_dir, 'diversity'), exist_ok=True)
             outfile = os.path.join(report_dir, 'diversity', f'nucleotide-{basename}.tsv')
@@ -421,6 +426,7 @@ def mercat_main():
             while jobs:
                 ready,jobs = ray.wait(jobs)
                 name,chunks = ray.get(ready[0])
+                chunks = [Path(c) for c in chunks]
                 samples[sample_type][name] += chunks
         if DEBUG:
             print(f"Time to check for large protein files: {round(timeit.default_timer() - start_time,2)} seconds")
@@ -443,10 +449,13 @@ def mercat_main():
         print(f"Time to count {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
         if DEBUG:
             print(f"Virtual Memory {mem_use()}GB")
+        start_time = timeit.default_timer()
         if len(tsv_list):
             figPlots.update(createFigures(tsv_list, sample_type, m_outputfolder, m_lowmem, m_class_file, m_pca))
             tsvfile = Path(m_outputfolder, f'combined_{sample_type}_T.tsv')
             mercat2_diversity.compute_beta_diversity(sample_type, tsvfile, Path(m_outputfolder, "report", "beta_diversity"))
+            if DEBUG:
+                print(f"Time to calculate Beta Diversity: {round(timeit.default_timer() - start_time,2)} seconds")
         for basename,filename in tsv_list.items():
             os.makedirs(os.path.join(report_dir, 'diversity'), exist_ok=True)
             outfile = os.path.join(report_dir, 'diversity', f'{sample_type}-{basename}.tsv')
@@ -478,6 +487,8 @@ def mercat_main():
         mergedDiversity[key].append(outfile)
 
     for key,filelist in mergedDiversity.items():
+        if len(filelist) < 2:
+            continue
         tomerge = dict()
         for filename in filelist:
             name = re.search(r'\w+-(\w+).tsv', Path(filename).name)

@@ -49,11 +49,11 @@ def split_sequenceN(header:str, sequence:str):
 
 
 ## Remove N's
-def removeN(fasta:str, outpath:str, toupper:bool):
+def removeN(fasta:Path, outpath:Path, toupper:bool):
     '''Splits sequences in a scaffold fasta file at N repeats.
 
     Parameters:
-        fasta (str): A path to a fasta file.
+        fasta (Path): A path to a fasta file.
         outpath (str): A folder path of where to save the modified file.
 
     Returns:
@@ -62,7 +62,7 @@ def removeN(fasta:str, outpath:str, toupper:bool):
 
     os.makedirs(outpath, exist_ok=True)    
 
-    GZIP = fasta.endswith('.gz')
+    GZIP = Path(fasta).suffix == '.gz'
 
     basename = Path(fasta).stem.split('.')[0]
     ext = ''.join(Path(fasta).suffixes)
@@ -115,7 +115,7 @@ def removeN(fasta:str, outpath:str, toupper:bool):
     reader.close()
     NStats['GC Content'] = 100.0 * gc_count / total_length
 
-    return (os.path.abspath(outFasta), NStats)
+    return (outFasta.absolute(), NStats)
 
 
 ## Check Command

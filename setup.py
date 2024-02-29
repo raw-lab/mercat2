@@ -3,7 +3,9 @@ import re
 import setuptools
 
 main_script = 'bin/mercat2.py'
-version = re.search(r'__version__\s+= "([0-9.]+)"', open(main_script).read()).group(1)
+version = re.search(r'__version__\s+= "(.+)"', open(main_script).read()).group(1)
+author = re.search(r'__author__\s+= "(.+)"', open(main_script).read()).group(1)
+
 
 # recursively load package files
 def package_files(directory):
@@ -18,7 +20,7 @@ def package_files(directory):
 setuptools.setup(
     name = "mercat2",
     version = version,
-    author = "Jose Luis Figueroa, Richard White III",
+    author = author,
     author_email = "jlfiguer@charlotte.edu",
     description = "versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis",
     long_description = open("README.md", "r").read(),

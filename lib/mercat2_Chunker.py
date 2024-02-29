@@ -14,7 +14,7 @@ import glob
 class Chunker:
 
     def __init__(self, path, dest, chunksize='1000M', delim=None, lines=None):
-        self.path = path
+        self.path = str(path)
         self.dest = dest
         self.chunksize = human2bytes(chunksize)
         self.delim = delim

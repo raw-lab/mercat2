@@ -3,6 +3,7 @@
 """
 
 import os
+from pathlib import Path
 import psutil
 import re
 import base64
@@ -153,7 +154,7 @@ def plot_sample_metrics(protein_samples: dict, tsv_out):
     for basename,files in protein_samples.items():
         for file in files:
             dfMetrics = pd.DataFrame()
-            reader = gzip.open(file, 'rt') if file.endswith('.gz') else open(file, 'r')
+            reader = gzip.open(file, 'rt') if Path(file).suffix=='.gz' else open(file, 'r')
             line = reader.readline()
             while line:
                 line = line.strip()
