@@ -99,16 +99,21 @@ def merge_tsv(tsv_list:dict, out_file:os.PathLike):
     FLIMIT = len(tsv_list) >= resource.getrlimit(resource.RLIMIT_NOFILE)[0]
     names = sorted(list(tsv_list.keys()))
     file_list = dict()
+    header = ""
     for name in names:
         if FLIMIT:
             with open(tsv_list[name]) as f:
-                f.readline() # skip header
+                head = f.readline() # skip header
+                if not header:
+                    header = head.split('\t')[0]
                 file_list[name] = f.tell()
         else:
             file_list[name] = open(tsv_list[name])
-            file_list[name].readline() # skip header
+            head = file_list[name].readline() # skip header
+            if not header:
+                header = head.split('\t')[0]
     with open(out_file, 'w') as writer:
-        print("kmer", '\t'.join(names), sep='\t', file=writer)
+        print(header, '\t'.join(names), sep='\t', file=writer)
         lines = dict()
         kmers = set()
         for name in names:
@@ -137,7 +142,8 @@ def merge_tsv(tsv_list:dict, out_file:os.PathLike):
                             lines[name] = f.readline().split()
                             file_list[name] = f.tell()
                     else:
-                        lines[name] = file_list[name].readline().split()
+                        lines[name] = file_list[name].readline().strip('\n').split('\t')
+                        lines[name] = [x for x in lines[name] if len(x) > 0]
                     if lines[name]:
                         kmers.add(lines[name][0])
             print('\t'.join(line), file=writer)

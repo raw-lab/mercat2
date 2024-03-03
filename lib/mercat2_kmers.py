@@ -3,6 +3,7 @@
 """
 
 import gzip
+from pathlib import Path
 
 ## Calculate k-mer count
 #
@@ -28,11 +29,11 @@ def calculateKmerCount(seq:str, kmer:int) -> dict:
 
 
 ## Find k-mers
-def find_kmers(file:str, kmer:int, min_count:int):
+def find_kmers(file:Path, kmer:int, min_count:int):
     '''Calculates the k-mer count in a fasta file.
 
     Parameters:
-        file (str): path to a fasta file to scan for k-mers.
+        file (Path): path to a fasta file to scan for k-mers.
         kmer (int): k-mer length.
         min_count (int): minimum count of k-mers found to be considered significant.
 
@@ -43,7 +44,7 @@ def find_kmers(file:str, kmer:int, min_count:int):
     num = 0
     kmerlist = dict()
 
-    f = gzip.open(file, 'rt') if file.endswith('.gz') else open(file, 'r')
+    f = gzip.open(file, 'rt') if file.suffix=='.gz' else open(file, 'r')
 
     seq = ""
     for line in f:
