@@ -351,8 +351,8 @@ def mercat_main():
         start_time = timeit.default_timer()
         if len(tsv_list):
             figPlots.update(createFigures(tsv_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file, m_pca))
-            tsvfile = Path(m_outputfolder, f'combined_{sample_type}_T.tsv')
             sample_type = "Nucleotide"
+            tsvfile = Path(m_outputfolder, f'combined_{sample_type}_T.tsv')
             mercat2_diversity.compute_beta_diversity(sample_type, tsvfile, Path(m_outputfolder, "report", "diversity"))
             if DEBUG:
                 print(f"Time to calculate Beta Diversity: {round(timeit.default_timer() - start_time,2)} seconds")
@@ -382,7 +382,7 @@ def mercat_main():
             ready,jobsProd = ray.wait(jobsProd)
             ret = ray.get(ready[0])
             if ret:
-                samples['prod'][ret[0]] = [ret[1]]
+                samples['prodigal'][ret[0]] = [ret[1]]
         if DEBUG:
             print(f"Time to run Prodigal: {round(timeit.default_timer() - start_time,2)} seconds")
             print(f"Virtual Memory {mem_use()}GB")
@@ -464,7 +464,7 @@ def mercat_main():
 
     # Plot Data
     mercat2_report.write_html(os.path.join(report_dir, "report.html"), figPlots, tsv_stats)
-    for sample_type in ['protein', 'fgs', 'prod']:
+    for sample_type in ['protein', 'fgs', 'prodigal']:
         if len(samples[sample_type]):
             tsv_out = os.path.join(report_dir, f'metrics-{sample_type}.tsv')
             htm_out = os.path.join(report_dir, f'metrics-{sample_type}.html')
