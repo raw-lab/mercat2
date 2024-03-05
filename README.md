@@ -68,26 +68,35 @@ conda install -c bioconda fastqc fastp prodigal
 
 ## Usage
 
-- -i I path to input file
-- -f F path to folder containing input files
-- -k K k-mer length
-- -n N no of cores [default = all]
-- -c C minimum k-mer count [default = 10]
-- -prod run prodigal on nucleotide assembled contigs
-  - Must be one of ['.fa', '.fna', '.ffn', '.fasta', 'fastq']
-- -fgs run FragGeneScanRS on nucleotide assembled contigs
-  - Must be one of ['.fa', '.fna', '.ffn', '.fasta', 'fastq']
-- -s S split files into chunks of S size, in MB [default is 100MB]
-- -skipclean skips the trimming steps [default = False]
-- -toupper convert all input sequences to uppercase [default = False]
-- -o output folder [default is 'mercat_results' in the current working directory]
-- -h, --help show this help message
+usage: mercat2.py [-h] [-i I [I ...]] [-f F] -k K [-n N] [-c C] [-prod] [-fgs] [-s S] [-o O] [-replace] [-lowmem LOWMEM] [-skipclean] [-toupper] [-pca] [--version]
+
+```bash
+options:
+  -h, --help      show this help message and exit
+  -i I            path to input file(s)
+  -f F            path to folder containing input files
+  -k K            kmer length
+  -n N            no of cores [auto detect]
+  -c C            minimum kmer count [10]
+  -prod           run Prodigal on fasta files
+  -fgs            run FragGeneScanRS on fasta files
+  -s S            Split into x MB files. [100]
+  -o O            Output folder, default = 'mercat_results' in current directory
+  -replace        Replace existing output directory [False]
+  -lowmem LOWMEM  Flag to use incremental PCA when low memory is available. [auto]
+  -skipclean      skip trimming of fastq files
+  -toupper        convert all input sequences to uppercase
+  -pca            create interactive PCA plot of the samples (minimum of 4 fasta files required)
+  --version, -v   show the version number and exit
+```
 
 Mercat assumes the input file format based on the extension provided
 
 - raw fastq file: ['.fastq', '.fq']
 - nucleotide fasta: ['.fa', '.fna', '.ffn', '.fasta']
 - amino acid fasta: ['.faa']
+
+- It also accepts gzipped versions of these filetypes with the added '.gz' suffix
 
 ## Usage examples
 
@@ -141,9 +150,45 @@ mercat2.py -i /path/to/input-file -k 3 -n 8 -c 10 -fgs
 
 ![GitHub Logo](https://github.com/raw-lab/mercat2/raw/master/doc/PCA.png)
 
-## Diversity estimation 
+## Diversity estimation
 
-Alpha diversity metrics provided by MerCat2 are experimental. We are currently working on the robustness of these measures. 
+Alpha and Beta diversity metrics provided by MerCat2 are experimental. We are currently working on the robustness of these measures.  
+
+Alpha diversity metrics provided:
+
+- shannon
+- simpson
+- simpson_e
+- goods_coverage
+- fisher_alpha
+- dominance
+- chao1
+- chao1_ci
+- ace
+
+Beta diversity metrics provided:
+
+- euclidean
+- cityblock
+- braycurtis
+- canberra
+- chebyshev
+- correlation
+- cosine
+- dice
+- hamming
+- jaccard
+- mahalanobis
+- manhattan (same as City Block in this case)
+- matching
+- minkowski
+- rogerstanimoto
+- russellrao
+- seuclidean
+- sokalmichener
+- sokalsneath
+- sqeuclidean
+- yule
 
 ## Notes on memory usage and speed
 
@@ -161,6 +206,6 @@ MerCat2: a versatile k-mer counter and diversity estimator for database-independ
 
 ### CONTACT
 
-Please send all queries to [Jose Luis Figueroa](mailto:jlfiguer@charlotte.edu) <br />
+Please send all queries to [Jose Luis Figueroa III](mailto:jlfiguer@charlotte.edu) <br />
 [Dr. Richard Allen White III](mailto:rwhit101@charlotte.edu)<br />
 Or [open an issue](https://github.com/raw-lab/mercat2/issues)
