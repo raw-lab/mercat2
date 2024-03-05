@@ -3,7 +3,7 @@
 
 """versatile k-mer counter and diversity estimator for database independent property analysis (DIPA) for multi-omic analysis"""
 
-__version__     = "1.4.0"
+__version__     = "1.4.1"
 __author__      = "Jose L. Figueroa III, Richard A. White III"
 __copyright__   = "Copyright (c) 2022-2024"
 
