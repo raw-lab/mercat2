@@ -200,12 +200,19 @@ The speed of MerCat2 can be increased when more memory or computer nodes are ava
 ## Citing Mercat
 
 If you are publishing results obtained using MerCat2, please cite: <br />
+Figueroa JL*, Redinbo A*, Panyala A, Colby S, Friesen M, Tiemann L, White III RA. 2024. <br />
+MerCat2: a versatile k-mer counter and diversity estimator for database-independent property analysis obtained from omics data <br />
+*Bioinformatics Advances*, vbae061, [paper](https://doi.org/10.1093/bioadv/vbae061)
+
+BioRxiv pre-print
 Figueroa JL, Panyala A, Colby S, Friesen M, Tiemann L, White III RA. 2022.  <br />
 MerCat2: a versatile k-mer counter and diversity estimator for database-independent property analysis obtained from omics data. bioRxiv.  <br />
 [paper](https://www.biorxiv.org/content/10.1101/2022.11.22.517562v1)   <br />
+
 
 ### CONTACT
 
 Please send all queries to [Jose Luis Figueroa III](mailto:jlfiguer@charlotte.edu) <br />
 [Dr. Richard Allen White III](mailto:rwhit101@charlotte.edu)<br />
+[Andrew Redinbo](mailto:aredinbo@charlotte.edu)<br />  
 Or [open an issue](https://github.com/raw-lab/mercat2/issues)
