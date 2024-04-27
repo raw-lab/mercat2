@@ -202,8 +202,7 @@ The speed of MerCat2 can be increased when more memory or computer nodes are ava
 If you are publishing results obtained using MerCat2, please cite: <br />
 Figueroa JL*, Redinbo A*, Panyala A, Colby S, Friesen M, Tiemann L, White III RA. 2024. <br />
 MerCat2: a versatile *k-mer* counter and diversity estimator for database-independent property analysis obtained from omics data <br />
-*Bioinformatics Advances*, vbae061 <br />
-[Bioinformatics Advances](https://doi.org/10.1093/bioadv/vbae061) <br />
+*Bioinformatics Advances*, vbae061 [Bioinformatics Advances](https://doi.org/10.1093/bioadv/vbae061) <br />
 *Co-first authors <br />
 
 BioRxiv pre-print<br />
