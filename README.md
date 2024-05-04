@@ -197,6 +197,9 @@ Running MerCat2 on a personal computer using a k-mer length of ~4 should be OK. 
   
 The speed of MerCat2 can be increased when more memory or computer nodes are available on a cluster and using a chunk size of about 100Mb.
 
+## Copyright  
+This is copyrighted by University of North Carolina at Charlotte, Jose L. Figueroa III, Andrew Redinbo, and Richard Allen White III.  All rights reserved.  DeGenPrime is a bioinformatic tool that can be distributed freely for academic use only. Please contact us for commerical use. The software is provided “as is” and the copyright owners or contributors are not liable for any direct, indirect, incidental, special, or consequential damages including but not limited to, procurement of goods or services, loss of use, data or profits arising in any way out of the use of this software.<br />
+
 ## Citing Mercat
 
 If you are publishing results obtained using MerCat2, please cite: <br />
