@@ -1,4 +1,4 @@
-[![Paper](https://img.shields.io/badge/paper-Bioinformatics Advances-teal.svg?style=flat-square&maxAge=3600)](https://doi.org/10.1093/bioadv/vbae061)
+[![Paper](https://img.shields.io/badge/paper-Bioinformatics-Advances-teal.svg?style=flat-square&maxAge=3600)](https://doi.org/10.1093/bioadv/vbae061)
 [![Pre-print](https://img.shields.io/badge/preprint-BioRxiv-red.svg?style=flat-square&maxAge=3600)](https://doi.org/10.1101/2022.11.22.517562)
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/mercat2/README.html)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/mercat2/badges/version.svg)](https://anaconda.org/bioconda/mercat2)
