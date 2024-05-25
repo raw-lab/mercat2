@@ -1,6 +1,14 @@
-# MerCat2: python code for versatile k-mer counter for database independent property analysis (DIPA) for omic analysis
-
+[![Paper](https://img.shields.io/badge/paper-Bioinformatics Advances-teal.svg?style=flat-square&maxAge=3600)](https://doi.org/10.1093/bioadv/vbae061)
+[![Pre-print](https://img.shields.io/badge/preprint-BioRxiv-red.svg?style=flat-square&maxAge=3600)](https://doi.org/10.1101/2022.11.22.517562)
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/mercat2/README.html)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/mercat2/badges/version.svg)](https://anaconda.org/bioconda/mercat2)
+[![Latest Update](https://anaconda.org/bioconda/mercat2/badges/latest_release_date.svg)](https://anaconda.org/bioconda/mercat2)
+[![Recent Update](https://anaconda.org/bioconda/mercat2/badges/latest_release_relative_date.svg)](https://anaconda.org/bioconda/mercat2)
+[![Platform](https://anaconda.org/bioconda/mercat2/badges/platforms.svg)](https://anaconda.org/bioconda/mercat2)
+[![License](https://anaconda.org/bioconda/mercat2/badges/license.svg)](https://anaconda.org/bioconda/mercat2)
+[![Downloads](https://anaconda.org/bioconda/mercat2/badges/downloads.svg)](https://anaconda.org/bioconda/mercat2)
+
+# MerCat2: python code for versatile k-mer counter for database independent property analysis (DIPA) for omic analysis
 
 ![GitHub Logo](https://github.com/raw-lab/mercat2/blob/master/MerCat2.jpg)
 
