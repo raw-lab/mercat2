@@ -9,6 +9,9 @@
 [![Platform](https://anaconda.org/bioconda/mercat2/badges/platforms.svg)](https://anaconda.org/bioconda/mercat2)
 [![License](https://anaconda.org/bioconda/mercat2/badges/license.svg)](https://anaconda.org/bioconda/mercat2)
 [![Downloads](https://anaconda.org/bioconda/mercat2/badges/downloads.svg)](https://anaconda.org/bioconda/mercat2)
+[![Downloads overall](https://static.pepy.tech/badge/mercat2)](https://pepy.tech/project/mercat2) 
+[![Downloads monthly](https://static.pepy.tech/badge/mercat2/month)](https://pepy.tech/project/mercat2)
+[![Downloads weekly](https://static.pepy.tech/badge/mercat2/week)](https://pepy.tech/project/mercat2)
 
 ![GitHub Logo](https://github.com/raw-lab/mercat2/blob/master/MerCat2.jpg)
 
