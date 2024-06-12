@@ -12,6 +12,7 @@ import subprocess
 import tarfile
 import re
 import textwrap
+import pyrodigal
 
 PATH_FGS = pkg.resource_filename("mercat2_lib", "FGS")
 
@@ -197,10 +198,10 @@ def fq2fa(fq_file:str, outpath:str, f_name:str):
     return os.path.abspath(fna_file)
 
 
-## ORF Call Prodigal
-def orf_call(basename:str, fna_in:str, outpath:str):
+## ORF Call Pyrodigal
+def orf_call_pyrodigal(basename:str, fna_in:str, outpath:str):
     '''Finds the ORFs in the nucleotides and converts to an amino acid file.
-    Uses prodigal for ORF calling.
+    Uses Pyrodigal for ORF calling.
     Produces a protein ffa file.
     Produces a gff file.
 
@@ -213,21 +214,34 @@ def orf_call(basename:str, fna_in:str, outpath:str):
         str: The path to the protein faa file.
     '''
 
-    if not check_command('prodigal'):
-        exit()
-
     outpath = os.path.abspath(outpath)
-    faa_tmp = os.path.join(outpath, basename+"_pro.faa")
-    faa_out = faa_tmp # os.path.join(outpath, basename+"_pro.faa.gz")
-    prod_cmd = ['prodigal',
-                '-a', faa_out,
-                '-p', 'meta']
-    os.makedirs(outpath, exist_ok=True)
-    pcat = subprocess.Popen(['zcat', fna_in], text=True, stdout=subprocess.PIPE)
-    with open(f'{outpath}/{basename}.gbk', 'w') as stdout, open(f'{outpath}/{basename}.stderr', 'w') as stderr:
-        subprocess.run(prod_cmd, stdout=stdout, stderr=stderr, stdin=pcat.stdout)
+    faa = Path(outpath, basename+".faa")
+    fna = faa.with_suffix(".fna")
+    gff = faa.with_suffix(".gff")
+    gbk = faa.with_suffix(".gbk")
 
-    return (basename, faa_out)
+    orf_finder = pyrodigal.GeneFinder(meta=True)
+    with gzip.open(fna_in, 'rt') as reader, open(faa, 'wt') as w_faa, open(fna, 'wt') as w_fna, open(gff, 'wt') as w_gff, open(gbk, 'wt') as w_gbk:
+        line = reader.readline()
+        while line:
+            if line.startswith(">"):
+                seq_id = line[1:].split()[0]
+                seq = list()
+                line = reader.readline()
+                while line:
+                    if line.startswith(">"):
+                        break
+                    seq += [line.strip()]
+                    line = reader.readline()
+                genes = orf_finder.find_genes("".join(seq))
+                genes.write_translations(w_faa, seq_id)
+                genes.write_genes(w_fna, seq_id)
+                genes.write_gff(w_gff, seq_id)
+                genes.write_genbank(w_gbk, seq_id)
+
+                continue
+            line = reader.readline()
+    return (basename, faa)
 
 
 ## ORF Call FragGeneScanRS

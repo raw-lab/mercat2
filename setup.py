@@ -42,11 +42,8 @@ setuptools.setup(
     python_requires = '>=3.9',
     install_requires = [
         'setuptools',
-        'grpcio ==1.43',
         'ray',
         'configargparse',
-        'pandas',
-        'numpy',
         'humanize',
         'plotly',
         'psutil',
@@ -56,7 +53,6 @@ setuptools.setup(
         'scipy',
         'metaomestats',
         'kaleido',
-
-# ray-core ray-dashboard ray-default ray-tune
+        'pyrodigal',
     ]
 )

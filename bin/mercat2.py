@@ -214,7 +214,7 @@ def mercat_main():
 
     print(f"\nStarting MerCat2 v{__version__} with k-mer {m_kmer} and {m_num_cores} threads\n")
 
-    ray.init(num_cpus=m_num_cores, log_to_driver=DEBUG)
+    ray.init(address="local", num_cpus=m_num_cores, include_dashboard=False, log_to_driver=DEBUG)
     if DEBUG:
         print(f"\nVirtual Memory {mem_use()}GB")
 
@@ -270,7 +270,6 @@ def mercat_main():
                 if ''.join(suffixes[i:]) in FILE_EXT_FASTQ + FILE_EXT_NUCLEOTIDE + FILE_EXT_PROTEIN:
                     f_ext = ''.join(suffixes[i:])
             basename = basepath.name.removesuffix(f_ext)
-            print(basename, f_ext)
             if f_ext in FILE_EXT_FASTQ:
                 jobsFastq += [fastq_to_fasta.remote(filename, cleanpath, basename, m_skipclean)]
             elif f_ext in FILE_EXT_NUCLEOTIDE:
@@ -368,23 +367,23 @@ def mercat_main():
     # PROD ORF Call
     if m_flag_prodigal and samples['nucleotide']:
         @ray.remote(num_cpus=1)
-        def orf_call_prod(basename, file, prodpath):
-            return mercat2_fasta.orf_call(basename, file, prodpath)
+        def orf_call_pyrod(basename, file, prodpath):
+            return mercat2_fasta.orf_call_pyrodigal(basename, file, prodpath)
 
-        print(f"\nRunning Prodigal on {len(samples['nucleotide'])} files")
+        print(f"\nRunning Pyrodigal on {len(samples['nucleotide'])} files")
         start_time = timeit.default_timer()
-        prodpath = os.path.join(m_outputfolder, 'prodigal')
-        os.makedirs(prodpath, exist_ok=True)
+        prodpath = Path(m_outputfolder, 'pyrodigal')
+        prodpath.mkdir(exist_ok=True)
         jobsProd = []
         for basename,files in samples['nucleotide'].items():
-            jobsProd += [orf_call_prod.remote(basename, files[0], prodpath)]
+            jobsProd += [orf_call_pyrod.remote(basename, files[0], prodpath)]
         while jobsProd:
             ready,jobsProd = ray.wait(jobsProd)
             ret = ray.get(ready[0])
             if ret:
                 samples['prodigal'][ret[0]] = [ret[1]]
         if DEBUG:
-            print(f"Time to run Prodigal: {round(timeit.default_timer() - start_time,2)} seconds")
+            print(f"Time to run Pyrodigal: {round(timeit.default_timer() - start_time,2)} seconds")
             print(f"Virtual Memory {mem_use()}GB")
 
     # FGS ORF Call
@@ -491,12 +490,13 @@ def mercat_main():
             continue
         tomerge = dict()
         for filename in filelist:
-            name = re.search(r'\w+-(\w+).tsv', Path(filename).name)
+            name = re.search(r'\w+-(.+).tsv', Path(filename).name)
             if name:
                 name = name.group(1)
                 tomerge[name] = filename
-        outfile = Path(report_dir, f'diversity-{key}.tsv')
-        mercat2_report.merge_tsv(tomerge, outfile)
+        if len(tomerge) >= 2:
+            outfile = Path(report_dir, f'diversity-{key}.tsv')
+            mercat2_report.merge_tsv(tomerge, outfile)
 
     print("\nFinished MerCat2 Pipeline")
 
