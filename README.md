@@ -2,7 +2,7 @@
 
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/mercat2/README.html)
 
-![GitHub Logo](https://github.com/raw-lab/mercat2/blob/master/MerCat2.jpg)
+![GitHub Logo](https://raw.githubusercontent.com/raw-lab/mercat2/master/MerCat2.jpg)
 
 ## Installing MerCat2
 
