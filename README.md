@@ -1,6 +1,17 @@
 # MerCat2: python code for versatile k-mer counter for database independent property analysis (DIPA) for omic analysis
 
+[![Paper](https://img.shields.io/badge/paper-BioinformaticsAdvances-teal.svg?style=flat-square&maxAge=3600)](https://doi.org/10.1093/bioadv/vbae061)
+[![Pre-print](https://img.shields.io/badge/preprint-BioRxiv-red.svg?style=flat-square&maxAge=3600)](https://doi.org/10.1101/2022.11.22.517562)
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/mercat2/README.html)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/mercat2/badges/version.svg)](https://anaconda.org/bioconda/mercat2)
+[![Latest Update](https://anaconda.org/bioconda/mercat2/badges/latest_release_date.svg)](https://anaconda.org/bioconda/mercat2)
+[![Recent Update](https://anaconda.org/bioconda/mercat2/badges/latest_release_relative_date.svg)](https://anaconda.org/bioconda/mercat2)
+[![Platform](https://anaconda.org/bioconda/mercat2/badges/platforms.svg)](https://anaconda.org/bioconda/mercat2)
+[![License](https://anaconda.org/bioconda/mercat2/badges/license.svg)](https://anaconda.org/bioconda/mercat2)
+[![Downloads](https://anaconda.org/bioconda/mercat2/badges/downloads.svg)](https://anaconda.org/bioconda/mercat2)
+[![Downloads overall](https://static.pepy.tech/badge/mercat2)](https://pepy.tech/project/mercat2) 
+[![Downloads monthly](https://static.pepy.tech/badge/mercat2/month)](https://pepy.tech/project/mercat2)
+[![Downloads weekly](https://static.pepy.tech/badge/mercat2/week)](https://pepy.tech/project/mercat2)
 
 ![GitHub Logo](https://raw.githubusercontent.com/raw-lab/mercat2/master/MerCat2.jpg)
 
@@ -197,15 +208,26 @@ Running MerCat2 on a personal computer using a k-mer length of ~4 should be OK. 
   
 The speed of MerCat2 can be increased when more memory or computer nodes are available on a cluster and using a chunk size of about 100Mb.
 
+## Copyright  
+This is copyrighted by University of North Carolina at Charlotte, Jose L. Figueroa III, Andrew Redinbo, and Richard Allen White III.  All rights reserved.  DeGenPrime is a bioinformatic tool that can be distributed freely for academic use only. Please contact us for commerical use. The software is provided “as is” and the copyright owners or contributors are not liable for any direct, indirect, incidental, special, or consequential damages including but not limited to, procurement of goods or services, loss of use, data or profits arising in any way out of the use of this software.<br />
+
 ## Citing Mercat
 
 If you are publishing results obtained using MerCat2, please cite: <br />
+Figueroa JL*, Redinbo A*, Panyala A, Colby S, Friesen M, Tiemann L, White III RA. 2024. <br />
+MerCat2: a versatile *k-mer* counter and diversity estimator for database-independent property analysis obtained from omics data <br />
+*Bioinformatics Advances*, vbae061 [Bioinformatics Advances](https://doi.org/10.1093/bioadv/vbae061) <br />
+*Co-first authors <br />
+
+BioRxiv pre-print<br />
 Figueroa JL, Panyala A, Colby S, Friesen M, Tiemann L, White III RA. 2022.  <br />
-MerCat2: a versatile k-mer counter and diversity estimator for database-independent property analysis obtained from omics data. bioRxiv.  <br />
-[paper](https://www.biorxiv.org/content/10.1101/2022.11.22.517562v1)   <br />
+MerCat2: a versatile *k-mer* counter and diversity estimator for database-independent property analysis obtained from omics data.  <br />
+[bioRxiv](https://www.biorxiv.org/content/10.1101/2022.11.22.517562v1)   <br />
+
 
 ### CONTACT
 
 Please send all queries to [Jose Luis Figueroa III](mailto:jlfiguer@charlotte.edu) <br />
 [Dr. Richard Allen White III](mailto:rwhit101@charlotte.edu)<br />
+[Andrew Redinbo](mailto:aredinbo@charlotte.edu)<br />  
 Or [open an issue](https://github.com/raw-lab/mercat2/issues)
