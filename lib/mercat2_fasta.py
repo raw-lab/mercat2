@@ -262,7 +262,7 @@ def orf_call_fgs(basename:str, fna_in:str, outpath:str):
     os.makedirs(outpath, exist_ok=True)
     faa_out = os.path.join(outpath, f'{basename}.faa.gz')
 
-    command = ['FragGeneScanRs',
+    command = [exe_fgs,
                 '--complete',
                 '-t', 'complete',
                 ]

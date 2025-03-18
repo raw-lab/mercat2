@@ -14,9 +14,9 @@ import subprocess
 import shutil
 import psutil
 from distutils.util import strtobool
-import ray
 import argparse
 import timeit
+import hydraMPP
 
 # Mercat libraries
 from mercat2_lib import (mercat2_fasta, mercat2_Chunker, mercat2_kmers, mercat2_diversity, mercat2_figures, mercat2_report)
@@ -83,7 +83,7 @@ def parseargs():
 
 ## Chunk Files
 #
-@ray.remote(num_cpus=1)
+@hydraMPP.remote
 def chunk_files(name:str, filename:str, chunk_size:int, outpath:str):
     '''Checks if the given file is larger than chunk_size and splits the file as necessary.
     Fasta files are split at sequence headers to keep individual sequences contiguous.
@@ -105,22 +105,20 @@ def chunk_files(name:str, filename:str, chunk_size:int, outpath:str):
         all_chunks = [filename]
     return (name, all_chunks)
 
-@ray.remote(num_cpus=1)
+@hydraMPP.remote
 def diversity(key, infile, outfile, sample_type):
     mercat2_diversity.compute_alpha_diversity(key, infile, outfile)
     return (sample_type, outfile)
-@ray.remote(num_cpus=1)
+#@hydraMPP.remote
 def countKmers(file, kmer, min_count):
     return mercat2_kmers.find_kmers(Path(file), kmer, min_count)
-@ray.remote(num_cpus=1)
+@hydraMPP.remote
 def run_mercat2(basename:str, files:list, out_file:os.PathLike, kmer, min_count, num_cores):
     kmers = dict()
     jobs = []
     for file in files:
-        jobs += [countKmers.remote(file, kmer, min_count)]
-    while(jobs):
-        ready,jobs = ray.wait(jobs)
-        for k,v in ray.get(ready[0]).items():
+        ret = countKmers(file, kmer, min_count)
+        for k,v in ret.items():
             if k in kmers:
                 kmers[k] += v
             else:
@@ -135,6 +133,30 @@ def run_mercat2(basename:str, files:list, out_file:os.PathLike, kmer, min_count,
     else:
         print(f"No significant k-mers found")
         return basename,None
+@hydraMPP.remote
+def fastq_qc(file, cleanpath, basename):
+    return (basename, mercat2_fasta.qc(file, cleanpath, basename))
+@hydraMPP.remote
+def clean_contig(file, cleanpath, basename, toupper, skipclean):
+    if skipclean:
+        stat = None
+    else:
+        file,stat = mercat2_fasta.removeN(file, cleanpath, toupper)
+    return (basename, file, stat)
+@hydraMPP.remote
+def fastq_to_fasta(file, cleanpath, basename, skiptrim:bool):
+    jobsQC = list()
+    #jobsQC = [fastq_qc.remote(file, cleanpath, basename)]
+    if not skiptrim:
+        file = mercat2_fasta.trim(file, cleanpath, basename)
+        #jobsQC += [fastq_qc.remote(file, cleanpath, basename)]
+    return (basename, mercat2_fasta.fq2fa(file, cleanpath, basename), jobsQC)
+@hydraMPP.remote
+def orf_call_prod(basename, file, prodpath):
+    return mercat2_fasta.orf_call(basename, file, prodpath)
+@hydraMPP.remote
+def orf_call_fgs(basename, file, outpath):
+    return mercat2_fasta.orf_call_fgs(basename, file, outpath)
 
 ## Create Figures
 #
@@ -214,7 +236,6 @@ def mercat_main():
 
     print(f"\nStarting MerCat2 v{__version__} with k-mer {m_kmer} and {m_num_cores} threads\n")
 
-    ray.init(num_cpus=m_num_cores, log_to_driver=DEBUG)
     if DEBUG:
         print(f"\nVirtual Memory {mem_use()}GB")
 
@@ -232,23 +253,8 @@ def mercat_main():
     jobsFastq = list()
     jobsContig = list()
 
-    @ray.remote(num_cpus=1)
-    def fastq_qc(file, cleanpath, basename):
-        return (basename, mercat2_fasta.qc(file, cleanpath, basename))
-    @ray.remote(num_cpus=1)
-    def clean_contig(file, cleanpath, basename, toupper, skipclean):
-        if skipclean:
-            stat = None
-        else:
-            file,stat = mercat2_fasta.removeN(file, cleanpath, toupper)
-        return (basename, file, stat)
-    @ray.remote(num_cpus=1)
-    def fastq_to_fasta(file, cleanpath, basename, skiptrim:bool):
-        jobsQC = [fastq_qc.remote(file, cleanpath, basename)]
-        if not skiptrim:
-            file = mercat2_fasta.trim(file, cleanpath, basename)
-            jobsQC += [fastq_qc.remote(file, cleanpath, basename)]
-        return (basename, mercat2_fasta.fq2fa(file, cleanpath, basename), jobsQC)
+    hydraMPP.init(num_cpus=m_num_cores)
+
     # Load files from folder
     if m_inputfolder:
         m_inputfolder = os.path.abspath(os.path.expanduser(m_inputfolder))
@@ -273,6 +279,7 @@ def mercat_main():
             print(basename, f_ext)
             if f_ext in FILE_EXT_FASTQ:
                 jobsFastq += [fastq_to_fasta.remote(filename, cleanpath, basename, m_skipclean)]
+                jobsQC += [fastq_qc.remote(filename, cleanpath, basename)]
             elif f_ext in FILE_EXT_NUCLEOTIDE:
                 jobsContig += [clean_contig.remote(filename, cleanpath, basename, m_toupper, m_skipclean)]
                 command = [ 'countAssembly.py', '-f', filename, '-i', '100' ]
@@ -285,14 +292,14 @@ def mercat_main():
 
     # Wait for jobs
     while jobsFastq:
-        ready,jobsFastq = ray.wait(jobsFastq)
-        basename,file,jobsqc = ray.get(ready[0])
+        ready,jobsFastq = hydraMPP.wait(jobsFastq)
+        basename,file,jobsqc = hydraMPP.get(ready[0])[2]
         samples['nucleotide'][basename] = [file]
         jobsQC += jobsqc
         #gc_content[basename] = stat['GC Content']
     while jobsContig:
-        ready,jobsContig = ray.wait(jobsContig)
-        basename,file,stat = ray.get(ready[0])
+        ready,jobsContig = hydraMPP.wait(jobsContig)
+        basename,file,stat = hydraMPP.get(ready[0])[2]
         samples['nucleotide'][basename] = [file]
         if stat:
             gc_content[basename] = stat['GC Content']
@@ -321,8 +328,8 @@ def mercat_main():
                 chunk_path = os.path.join(dir_chunks, basename)
                 jobs += [chunk_files.remote(basename, *file, m_chunk_size, chunk_path)]
             while jobs:
-                ready,jobs = ray.wait(jobs)
-                name,chunks = ray.get(ready[0])
+                ready,jobs = hydraMPP.wait(jobs)
+                name,chunks = hydraMPP.get(ready[0])[2]
                 chunks = [Path(c) for c in chunks]
                 samples['nucleotide'][name] += chunks
             if DEBUG:
@@ -340,8 +347,8 @@ def mercat_main():
             jobs += [run_mercat2.remote(basename, files, out_counts, m_kmer, m_min_count, m_num_cores)]
         tsv_list = dict()
         while(jobs):
-            ready,jobs = ray.wait(jobs)
-            basename,kmers = ray.get(ready[0])
+            ready,jobs = hydraMPP.wait(jobs)
+            basename,kmers = hydraMPP.get(ready[0])[2]
             if kmers:
                 tsv_list[basename] = kmers
         print(f"Time to count {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
@@ -350,9 +357,9 @@ def mercat_main():
         # Stacked Bar Plots (top kmer counts)
         start_time = timeit.default_timer()
         if len(tsv_list):
+            sample_type = "Nucleotide"
             figPlots.update(createFigures(tsv_list, "Nucleotide", m_outputfolder, m_lowmem, m_class_file, m_pca))
             tsvfile = Path(m_outputfolder, f'combined_{sample_type}_T.tsv')
-            sample_type = "Nucleotide"
             mercat2_diversity.compute_beta_diversity(sample_type, tsvfile, Path(m_outputfolder, "report", "diversity"))
             if DEBUG:
                 print(f"Time to calculate Beta Diversity: {round(timeit.default_timer() - start_time,2)} seconds")
@@ -367,10 +374,6 @@ def mercat_main():
     ## Process Proteins ##
     # PROD ORF Call
     if m_flag_prodigal and samples['nucleotide']:
-        @ray.remote(num_cpus=1)
-        def orf_call_prod(basename, file, prodpath):
-            return mercat2_fasta.orf_call(basename, file, prodpath)
-
         print(f"\nRunning Prodigal on {len(samples['nucleotide'])} files")
         start_time = timeit.default_timer()
         prodpath = os.path.join(m_outputfolder, 'prodigal')
@@ -379,9 +382,11 @@ def mercat_main():
         for basename,files in samples['nucleotide'].items():
             jobsProd += [orf_call_prod.remote(basename, files[0], prodpath)]
         while jobsProd:
-            ready,jobsProd = ray.wait(jobsProd)
-            ret = ray.get(ready[0])
+            ready,jobsProd = hydraMPP.wait(jobsProd)
+            ret = hydraMPP.get(ready[0])[2]
             if ret:
+                if 'prod' not in samples:
+                    samples['prod'] = dict()
                 samples['prod'][ret[0]] = [ret[1]]
         if DEBUG:
             print(f"Time to run Prodigal: {round(timeit.default_timer() - start_time,2)} seconds")
@@ -389,9 +394,6 @@ def mercat_main():
 
     # FGS ORF Call
     if m_flag_fgs and samples['nucleotide']:
-        @ray.remote(num_cpus=1)
-        def orf_call_fgs(basename, file, outpath):
-            return mercat2_fasta.orf_call_fgs(basename, file, outpath)
         print(f"\nRunning FragGeneScanRS on {len(samples['nucleotide'])} files")
         start_time = timeit.default_timer()
         outfgs = os.path.join(m_outputfolder, 'fgs')
@@ -399,9 +401,11 @@ def mercat_main():
         for basename,files in samples['nucleotide'].items():
             jobsFGS += [orf_call_fgs.remote(basename, files[0], outfgs)]
         while jobsFGS:
-            ready,jobsFGS = ray.wait(jobsFGS)
-            ret = ray.get(ready[0])
+            ready,jobsFGS = hydraMPP.wait(jobsFGS)
+            ret = hydraMPP.get(ready[0])[2]
             if ret:
+                if 'fgs' not in samples:
+                    samples['fgs'] = dict()
                 samples['fgs'][ret[0]] = [ret[1]]
         if DEBUG:
             print(f"Time to run FGS: {round(timeit.default_timer() - start_time,2)} seconds")
@@ -424,8 +428,8 @@ def mercat_main():
                 chunk_path = os.path.join(dir_chunks, basename)
                 jobs += [chunk_files.remote(basename, file[0], m_chunk_size, chunk_path)]
             while jobs:
-                ready,jobs = ray.wait(jobs)
-                name,chunks = ray.get(ready[0])
+                ready,jobs = hydraMPP.wait(jobs)
+                name,chunks = hydraMPP.get(ready[0])[2]
                 chunks = [Path(c) for c in chunks]
                 samples[sample_type][name] += chunks
         if DEBUG:
@@ -441,9 +445,9 @@ def mercat_main():
             files = files[1:] if len(files)>1 else [files[0]]
             jobs += [run_mercat2.remote(basename, files, out_counts, m_kmer, m_min_count, m_num_cores)]
         while(jobs):
-            ready,jobs = ray.wait(jobs)
+            ready,jobs = hydraMPP.wait(jobs)
             if ready[0]:
-                basename,kmers = ray.get(ready[0])
+                basename,kmers = hydraMPP.get(ready[0])[2]
                 if kmers:
                     tsv_list[basename] = kmers
         print(f"Time to count {m_kmer}-mers: {round(timeit.default_timer() - start_time,2)} seconds")
@@ -464,7 +468,7 @@ def mercat_main():
 
     # Plot Data
     mercat2_report.write_html(os.path.join(report_dir, "report.html"), figPlots, tsv_stats)
-    for sample_type in ['protein', 'fgs', 'prod']:
+    for sample_type in ['protein', 'fgs', 'prodigal']:
         if len(samples[sample_type]):
             tsv_out = os.path.join(report_dir, f'metrics-{sample_type}.tsv')
             htm_out = os.path.join(report_dir, f'metrics-{sample_type}.html')
@@ -475,13 +479,13 @@ def mercat_main():
     if jobsQC:
         print("Waiting for any remaining QC jobs")
     while jobsQC:
-        ready,jobsQC = ray.wait(jobsQC)
+        ready,jobsQC = hydraMPP.wait(jobsQC)
 
     print("Gathering Diversity Metrics")
     mergedDiversity = dict()
     while jobsDiversity:
-        ready,jobsDiversity = ray.wait(jobsDiversity)
-        key,outfile = ray.get(ready[0])
+        ready,jobsDiversity = hydraMPP.wait(jobsDiversity)
+        key,outfile = hydraMPP.get(ready[0])[2]
         if key not in mergedDiversity:
             mergedDiversity[key] = []
         mergedDiversity[key].append(outfile)

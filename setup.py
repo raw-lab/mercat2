@@ -42,11 +42,8 @@ setuptools.setup(
     python_requires = '>=3.9',
     install_requires = [
         'setuptools',
-        'grpcio ==1.43',
-        'ray',
+        'hydrampp',
         'configargparse',
-        'pandas',
-        'numpy',
         'humanize',
         'plotly',
         'psutil',

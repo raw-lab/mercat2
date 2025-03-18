@@ -4,7 +4,6 @@
 
 
 from pathlib import Path
-import ray
 from skbio.diversity import alpha as skbio_alpha
 from skbio.diversity import beta_diversity
 import matplotlib.pyplot as pyplot
@@ -12,7 +11,6 @@ import matplotlib.pyplot as pyplot
 
 def compute_alpha_diversity(basename, counts_tsv, out_file):
 
-    @ray.remote(num_cpus=1)
     def get(func, count):
         try:
             method = getattr(skbio_alpha, func)
@@ -26,16 +24,10 @@ def compute_alpha_diversity(basename, counts_tsv, out_file):
         for line in reader:
             counts += [int(line.split()[1])]
 
-    jobs = list()
-    for func in ['shannon', 'simpson', 'simpson_e', 'goods_coverage', 'fisher_alpha', 'dominance', 'chao1', 'chao1_ci', 'ace']:
-        jobs += [get.remote(func, counts)]
-
     results = dict()
-    while jobs:
-        ready,jobs = ray.wait(jobs)
-        if ready:
-            key,value = ray.get(ready[0])
-            results[key] = value
+    for func in ['shannon', 'simpson', 'simpson_e', 'goods_coverage', 'fisher_alpha', 'dominance', 'chao1', 'chao1_ci', 'ace']:
+        key,value = get(func, counts)
+        results[key] = value
 
     with open(out_file, 'w') as writer:
         print('Metric', basename, sep='\t', file=writer)
