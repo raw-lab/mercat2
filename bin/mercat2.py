@@ -496,7 +496,7 @@ def mercat_main():
             continue
         tomerge = dict()
         for filename in filelist:
-            name = re.search(r'\w+-(\w+).tsv', Path(filename).name)
+            name = re.search(r'\w+-(.+).tsv', Path(filename).name)
             if name:
                 name = name.group(1)
                 tomerge[name] = filename
