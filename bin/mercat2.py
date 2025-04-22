@@ -125,7 +125,6 @@ def run_mercat2(basename:str, files:list, out_file:os.PathLike, kmer, min_count,
             else:
                 kmers[k] = v
     if len(kmers):
-        print(f"Significant k-mers: {len(kmers)}")
         with open(out_file, 'w') as writer:
             print('k-mer', f'{basename}_Count', sep='\t', file=writer)
             for kmer,count in sorted(kmers.items()):
@@ -277,7 +276,6 @@ def mercat_main():
                 if ''.join(suffixes[i:]) in FILE_EXT_FASTQ + FILE_EXT_NUCLEOTIDE + FILE_EXT_PROTEIN:
                     f_ext = ''.join(suffixes[i:])
             basename = basepath.name.removesuffix(f_ext)
-            print(basename, f_ext)
             if f_ext in FILE_EXT_FASTQ:
                 jobsFastq += [fastq_to_fasta.remote(filename, cleanpath, basename, m_skipclean)]
                 jobsQC += [fastq_qc.remote(filename, cleanpath, basename)]
