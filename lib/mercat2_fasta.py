@@ -171,24 +171,27 @@ def trim(fq_file:str, outpath:str, f_name:str):
         return fq_file
     return trim_fq
 
-def fq2fa(fq_file:str, outpath:str, f_name:str):
+def fq2fa(fq_file:Path, outpath:Path, f_name:str):
     '''Processes fastq files.
     Uses Linux sed command to convert the fastq file to fasta format.
 
     Parameters:
-        fq_file (str): The path to a fastq file.
-        outpath (str): The path to save the  fasta file.
+        fq_file (Path): The path to a fastq file.
+        outpath (Path): The path to save the  fasta file.
         f_name (str): The name of the sample.
 
     Returns:
         str: The path to the converted fasta file.
     '''
 
-    os.makedirs(outpath, exist_ok=True)
-    fna_file = os.path.join(outpath, f_name+".fna.gz")
+    fq_file = Path(fq_file)
+    outpath = Path(outpath)
+
+    outpath.mkdir(parents=True, exist_ok=True)
+    fna_file = Path(outpath, f_name+".fna.gz")
 
     # convert fastq to fasta
-    cat = 'zcat' if fq_file.endswith('.gz') else 'cat'
+    cat = 'zcat' if fq_file.name.endswith('.gz') else 'cat'
     pcat = subprocess.Popen([cat, fq_file], stdout=subprocess.PIPE)
     proc = subprocess.Popen(['sed', '-n', '1~4s/^@/>/p;2~4p'], stdin=pcat.stdout, stdout=subprocess.PIPE, text=True)
     with gzip.open(fna_file, 'wt') as writer:
