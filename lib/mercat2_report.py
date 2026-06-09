@@ -5,9 +5,9 @@
 import os
 import resource
 import psutil
-import re
+from pathlib import Path
 import base64
-import pkg_resources as pkg
+#import pkg_resources as pkg
 import time
 import dominate
 from dominate.tags import *
@@ -17,8 +17,10 @@ from mercat2_lib import mercat2_metrics
 
 
 # Global Stylesheet
-STYLESHEET = pkg.resource_stream('mercat2_lib', 'data/style.css').read().decode()
-LOGO = pkg.resource_stream('mercat2_lib', 'data/logo.jpg').read()
+#STYLESHEET = pkg.resource_stream('mercat2_lib', 'data/style.css').read().decode()
+#LOGO = pkg.resource_stream('mercat2_lib', 'data/logo.jpg').read()
+STYLESHEET = (Path(__file__).parent.resolve() / "data/style.css").read_bytes().decode()
+LOGO = (Path(__file__).parent.resolve() / "data/logo.jpg").read_bytes()
 LOGO = base64.b64encode(LOGO).decode()
 
 # TODO: Option for how to include plotly.js.
