@@ -74,11 +74,6 @@ def parseargs():
     if args.f and not os.path.isdir(args.f):
         parser.error(f"folder {args.f} is not valid.\n")
 
-    # check prodigal/protein flags
-    if args.prod:
-        if not mercat2_fasta.check_command('prodigal'):
-            exit(1)
-
     return args, parser
 
 

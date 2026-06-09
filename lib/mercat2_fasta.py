@@ -5,15 +5,17 @@
 import os
 import sys
 from pathlib import Path
-import pkg_resources as pkg
+#import pkg_resources as pkg
 import gzip
 import shutil
 import subprocess
 import tarfile
 import re
 import textwrap
+import pyrodigal
 
-PATH_FGS = pkg.resource_filename("mercat2_lib", "FGS")
+#PATH_FGS = pkg.resource_filename("mercat2_lib", "FGS")
+PATH_FGS = Path(__file__).parent.resolve() / "FGS"
 
 
 ## Split Sequence by N
@@ -216,19 +218,38 @@ def orf_call(basename:str, fna_in:str, outpath:str):
         str: The path to the protein faa file.
     '''
 
-    if not check_command('prodigal'):
-        exit()
 
     outpath = os.path.abspath(outpath)
-    faa_tmp = os.path.join(outpath, basename+"_pro.faa")
-    faa_out = faa_tmp # os.path.join(outpath, basename+"_pro.faa.gz")
-    prod_cmd = ['prodigal',
-                '-a', faa_out,
-                '-p', 'meta']
+    faa_out = os.path.join(outpath, basename+"_pro.faa")
+    #faa_out = faa_tmp # os.path.join(outpath, basename+"_pro.faa.gz")
     os.makedirs(outpath, exist_ok=True)
-    pcat = subprocess.Popen(['zcat', fna_in], text=True, stdout=subprocess.PIPE)
-    with open(f'{outpath}/{basename}.gbk', 'w') as stdout, open(f'{outpath}/{basename}.stderr', 'w') as stderr:
-        subprocess.run(prod_cmd, stdout=stdout, stderr=stderr, stdin=pcat.stdout)
+    #if not check_command('prodigal'):
+    #    exit()
+    #prod_cmd = ['prodigal',
+    #            '-a', faa_out,
+    #            '-p', 'meta']
+    #pcat = subprocess.Popen(['zcat', fna_in], text=True, stdout=subprocess.PIPE)
+    #with open(f'{outpath}/{basename}.gbk', 'w') as stdout, open(f'{outpath}/{basename}.stderr', 'w') as stderr:
+    #    subprocess.run(prod_cmd, stdout=stdout, stderr=stderr, stdin=pcat.stdout)
+
+    orf_finder = pyrodigal.GeneFinder(meta=True)
+    with gzip.open(fna_in, 'rt') as reader, open(faa_out, 'wt') as w_faa, open(f'{outpath}/{basename}.gbk', 'wt') as w_gbk:
+        line = reader.readline()
+        while line:
+            if line.startswith(">"):
+                seq_id = line[1:].split()[0]
+                seq = list()
+                line = reader.readline()
+                while line:
+                    if line.startswith(">"):
+                        break
+                    seq += [line.strip()]
+                    line = reader.readline()
+                genes = orf_finder.find_genes("".join(seq))
+                genes.write_translations(w_faa, seq_id)
+                genes.write_genbank(w_gbk, seq_id)
+                continue
+            line = reader.readline()
 
     return (basename, faa_out)
 

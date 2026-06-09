@@ -30,13 +30,11 @@ setuptools.setup(
     packages = ['mercat2_lib'], # list of packages, installed to 'site-packages' folder
     package_dir = dict(mercat2_lib='lib'), # dict with 'package'='relative dir'
     package_data = dict(mercat2_lib=package_files('lib/')), # add non-python data to package, relative paths
-    license = "BSD License", # metadata
     platforms = ['Unix'], # metadata
     classifiers = [ # This is the new updated way for metadata, but old way seems to still be used in some of the output
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
-        "License :: OSI Approved :: BSD License",
         "Operating System :: Unix",
     ],
     python_requires = '>=3.9',
@@ -53,7 +51,7 @@ setuptools.setup(
         'scipy',
         'metaomestats',
         'kaleido',
-
-# ray-core ray-dashboard ray-default ray-tune
+        'matplotlib',
+        'pyrodigal',
     ]
 )
